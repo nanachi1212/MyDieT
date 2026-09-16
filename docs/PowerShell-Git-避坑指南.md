@@ -233,3 +233,88 @@ python -c "import io;io.open('AGENTS.md',encoding='utf-8').read();print('OK utf-
 ```
 
 失敗就是編碼壞了，**重寫，不要 commit**（見第 6 節）。
+
+### 10.1 heredoc 的 `EOF` 一定要加單引號
+
+```bash
+cat > AGENTS.md <<'EOF'    # ✅ 引號 = 字面內容，不展開
+cat > AGENTS.md <<EOF      # ❌ 反引號、$、\ 會被 shell 展開
+```
+
+沒加引號時，內容裡的 `` `git diff` ``、`$PWD`、`C:\Users` 會被當成命令替換、
+變數與跳脫，輕則內容錯誤，重則 `bad substitution` 整個寫入失敗。
+
+**規則：寫檔案內容一律 `<<'EOF'`；只有真的要插入變數才用不加引號的 `<<EOF`。**
+
+---
+
+## 11. Windows Packaged App / MSIX 檔案系統虛擬化
+
+**這一節的代價最高：AI 代理會回報「全部 PASS」，而使用者端根本沒裝好。**
+
+### 問題
+
+Claude 桌面版、OpenAI Codex 桌面版等 AI 代理是以 Windows 打包應用程式（MSIX）形式執行。
+它們的 shell 對使用者設定檔路徑的**寫入**會被 Windows 靜默重導到容器目錄：
+
+```text
+代理以為寫到：
+C:\Users\<User>\AppData\Local\Android\Sdk
+
+實際落在：
+C:\Users\<User>\AppData\Local\Packages\<PackageFamilyName>\LocalCache\Local\Android\Sdk
+```
+
+在代理的 shell 裡，讀取、執行、驗證**全部都會成功**，因為容器內看得到自己寫的東西。
+使用者在真實 PowerShell 打開同一個路徑，卻是空的，或根本不存在。
+
+沒有錯誤訊息，沒有警告。這是最危險的地方。
+
+### 受影響 / 不受影響
+
+| 路徑 | 是否被重導 |
+|---|---|
+| `%LOCALAPPDATA%`（`C:\Users\<User>\AppData\Local\...`） | ✅ 會 |
+| `%APPDATA%`、`%USERPROFILE%` 下部分子路徑 | ✅ 會 |
+| Dart / Flutter 的 pub cache（`AppData\Local\Pub\Cache`） | ✅ 會 |
+| 登錄檔寫入（環境變數） | ⚠️ 視情況，實測會寫進真實 User 層級 |
+| 非系統磁碟，如 `E:\`、`D:\` | ❌ 不會 |
+| `C:\Program Files\`（安裝程式提權執行時） | ❌ 不會 |
+
+環境變數寫進真實登錄檔、檔案卻留在容器裡，是最惡劣的組合 ——
+使用者看得到 `ANDROID_HOME`，但它指向一個不存在的資料夾。
+
+### 規則
+
+1. **開發工具鏈（SDK、runtime、toolchain）一律不裝在 `%LOCALAPPDATA%` 或使用者設定檔底下。**
+   固定使用非系統磁碟的明確路徑，例如 `E:\Android\Sdk`。
+2. **AI 代理不得自行安裝需要全域環境變數的開發工具。**
+   代理負責產生指令，由使用者在真實 PowerShell 執行。
+3. **代理 shell 內的 `flutter doctor`、`where.exe`、`Test-Path`、`adb --version` 結果，
+   不得作為環境設定的驗收依據。** 環境類驗收一律由使用者在自己的終端機執行並回貼。
+4. **設定與驗證必須在同一個環境完成。** 在 A 環境設定、在 B 環境驗證，等於沒驗證。
+5. **搬移 / 複製 SDK 也不可由代理執行**，同樣會被重導。產生 Robocopy 指令交給使用者。
+
+### 懷疑被重導時的交叉驗證
+
+```powershell
+# 用你以為的路徑，去 Packages 底下反查
+Get-ChildItem 'C:\Users\User\AppData\Local\Packages' -Directory |
+  ForEach-Object { Join-Path $_.FullName 'LocalCache\Local\Android\Sdk' } |
+  Where-Object { Test-Path $_ }
+```
+
+找得到東西，就代表被重導了。
+
+### 本專案實際案例（2026-09-16）
+
+Android SDK 被裝進 `Claude_pzs8sxrjxfjjc\LocalCache\Local\Android\Sdk`（2.8 GB）。
+代理端 `flutter doctor` 全綠、`adb` 正常、`flutter build apk --debug` 成功產出 APK，
+但使用者端 `flutter doctor` 顯示 `Android SDK not found at this location`。
+
+同一台機器另有 `OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\Android\Sdk`（0.55 GB），成因相同。
+
+修正方式：用 Robocopy 把容器內的 SDK 複製到 `E:\Android\Sdk`（由使用者執行），
+再更新 `ANDROID_HOME`、User PATH 與 `flutter config --android-sdk`。
+
+**本專案的正式 Android SDK 路徑固定為 `E:\Android\Sdk`，不得再使用 `%LOCALAPPDATA%` 或任何容器內路徑。**
