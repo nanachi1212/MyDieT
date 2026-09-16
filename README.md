@@ -49,3 +49,8 @@ iOS build 需要 macOS 與 Xcode。**在 Windows 上無法驗證 iOS build**，�
 
 API Key 一律走 `flutter_secure_storage`（iOS Keychain / Android Keystore），
 禁止 hardcode、禁止進版控。`key.properties`、`*.jks`、`*.env` 已列入 `.gitignore`。
+
+## AI 代理規則
+
+所有 AI 代理（Claude / Codex / Gemini / Antigravity / ChatGPT）請先讀 [AGENTS.md](AGENTS.md)，
+特別是 [docs/PowerShell-Git-避坑指南.md](docs/PowerShell-Git-避坑指南.md)。
