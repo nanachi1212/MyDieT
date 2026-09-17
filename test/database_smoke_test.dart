@@ -161,7 +161,9 @@ void main() {
       }
 
       final q = db.select(db.dailyNutritionTargets)
-        ..where((t) => t.effectiveFrom.isSmallerOrEqualValue(DateTime(2026, 9, 17)))
+        ..where(
+          (t) => t.effectiveFrom.isSmallerOrEqualValue(DateTime(2026, 9, 17)),
+        )
         ..orderBy([(t) => OrderingTerm.desc(t.effectiveFrom)])
         ..limit(1);
 
@@ -180,7 +182,8 @@ void main() {
             ),
           );
       expect(
-        (await db.select(db.dailyNutritionTargets).getSingle()).isManualOverride,
+        (await db.select(db.dailyNutritionTargets).getSingle())
+            .isManualOverride,
         isFalse,
       );
     });

@@ -158,7 +158,11 @@ abstract final class EnergyCalculator {
 
   static void _validateAge(int years) {
     if (years < _minAge || years > _maxAge) {
-      throw ArgumentError.value(years, 'ageYears', '年齡必須介於 $_minAge 至 $_maxAge');
+      throw ArgumentError.value(
+        years,
+        'ageYears',
+        '年齡必須介於 $_minAge 至 $_maxAge',
+      );
     }
   }
 }

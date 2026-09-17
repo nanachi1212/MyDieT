@@ -43,10 +43,8 @@ void main() {
 
     test('serving 缺 servingGrams → 拋錯', () {
       expect(
-        () => NutritionCalculator.toGrams(
-          quantity: 1,
-          unit: ServingUnit.serving,
-        ),
+        () =>
+            NutritionCalculator.toGrams(quantity: 1, unit: ServingUnit.serving),
         throwsArgumentError,
       );
     });
@@ -234,24 +232,14 @@ void main() {
 
   group('macroPercent', () {
     test('P/C/F 百分比加起來是 100', () {
-      const f = NutritionFacts(
-        calories: 500,
-        protein: 25,
-        carbs: 50,
-        fat: 20,
-      );
+      const f = NutritionFacts(calories: 500, protein: 25, carbs: 50, fat: 20);
       final m = f.macroPercent;
       expect(m.protein + m.carbs + m.fat, closeTo(100, 0.001));
     });
 
     test('依熱量佔比而非重量', () {
       // P 25g=100kcal, C 50g=200kcal, F 20g=180kcal, 合計 480
-      const f = NutritionFacts(
-        calories: 500,
-        protein: 25,
-        carbs: 50,
-        fat: 20,
-      );
+      const f = NutritionFacts(calories: 500, protein: 25, carbs: 50, fat: 20);
       final m = f.macroPercent;
       expect(m.protein, closeTo(100 / 480 * 100, 0.01));
       expect(m.carbs, closeTo(200 / 480 * 100, 0.01));

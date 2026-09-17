@@ -30,8 +30,13 @@ enum FoodCategory {
 
 /// 食物資料的來源。
 enum FoodSource {
-  /// App 內建的台灣食物種子資料
+  /// App 內建的台灣食物種子資料（單一食材，採用官方營養成分參考值）
   taiwanSeed,
+
+  /// App 內建的台灣複合餐點（便當、麵食、手搖飲…）。
+  ///
+  /// 各家做法差異很大，數值是代表性估算，UI 必須標示為估算值。
+  taiwanSeedEstimated,
 
   /// 使用者自己建立
   userCustom,

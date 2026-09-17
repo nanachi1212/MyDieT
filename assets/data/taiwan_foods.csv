@@ -1,0 +1,65 @@
+# MyDieT 台灣常見食物種子資料
+#
+# 欄位：name,name_en,category,calories,protein,carbs,fat,sugar,fiber,sodium,serving_g,serving_label,estimated
+#
+# 單位：calories = kcal / 100g，protein/carbs/fat/sugar/fiber = g / 100g，sodium = mg / 100g
+# 空白欄位 = 資料不明（存成 null，不是 0）
+#
+# estimated 欄位：
+#   0 = 單一食材，採用衛福部食藥署食品營養成分資料庫與 USDA 的常見參考值
+#   1 = 複合餐點，各店家差異很大，這裡放的是代表性估算值，UI 會標示為估算
+#
+# category：grains 全穀雜糧 / protein 豆魚蛋肉 / vegetables 蔬菜 /
+#           fruits 水果 / dairy 乳品 / fatsAndNuts 油脂與堅果 / other 其他
+#
+name,name_en,category,calories,protein,carbs,fat,sugar,fiber,sodium,serving_g,serving_label,estimated
+白飯,steamed white rice,grains,130,2.7,28.0,0.3,0.1,0.4,1,200,碗,0
+糙米飯,brown rice,grains,123,2.8,25.6,1.0,0.3,1.8,3,200,碗,0
+稀飯,rice porridge,grains,46,0.9,10.0,0.1,0.1,0.2,1,300,碗,0
+地瓜,sweet potato,grains,121,1.3,27.8,0.2,9.2,2.4,45,150,條,0
+白吐司,white bread,grains,299,9.0,49.2,7.0,4.5,2.2,470,30,片,0
+饅頭,steamed bun,grains,280,8.0,57.0,1.5,4.0,1.5,200,100,顆,0
+燕麥片,rolled oats,grains,406,12.5,68.9,9.4,1.5,8.9,5,40,份,0
+冬粉,mung bean noodles,grains,351,0.1,86.6,0.1,,0.8,10,,,0
+麵條(生),raw wheat noodles,grains,280,9.0,56.0,1.3,1.0,2.0,400,,,0
+玉米,corn,grains,107,3.3,22.0,1.5,4.5,3.7,2,,,0
+南瓜,pumpkin,grains,74,1.9,17.3,0.2,5.0,2.5,1,,,0
+雞蛋,chicken egg,protein,143,12.5,1.5,9.6,0.8,0.0,140,55,顆,0
+茶葉蛋,tea egg,protein,145,13.0,1.6,9.5,0.6,0.0,600,55,顆,0
+雞胸肉,chicken breast skinless,protein,104,22.4,0.0,1.2,0.0,0.0,42,,,0
+雞腿,chicken thigh boneless,protein,157,18.5,0.0,9.0,0.0,0.0,75,,,0
+豬里肌,pork loin,protein,187,22.2,0.0,10.2,0.0,0.0,50,,,0
+牛腱,beef shank,protein,123,20.3,0.0,4.0,0.0,0.0,60,,,0
+鮭魚,salmon,protein,221,19.8,0.0,15.6,0.0,0.0,50,,,0
+蝦仁,shrimp,protein,100,21.9,0.3,0.8,0.0,0.0,180,,,0
+板豆腐,firm tofu,protein,88,8.5,2.4,4.8,0.8,0.6,2,100,塊,0
+嫩豆腐,soft tofu,protein,53,4.9,2.0,2.7,0.7,0.4,2,,,0
+無糖豆漿,unsweetened soy milk,protein,35,3.6,1.6,1.6,0.6,1.3,30,500,杯,0
+全脂牛奶,whole milk,dairy,63,3.1,4.8,3.5,4.8,0.0,41,240,杯,0
+無糖優格,plain yogurt,dairy,63,3.5,4.7,3.2,4.7,0.0,46,100,份,0
+起司片,cheese slice,dairy,320,20.0,3.0,25.0,1.5,0.0,1300,20,片,0
+高麗菜,cabbage,vegetables,23,1.3,4.8,0.1,2.9,1.1,17,,,0
+青江菜,bok choy,vegetables,14,1.5,2.0,0.2,0.9,1.4,60,,,0
+花椰菜,broccoli,vegetables,23,2.2,4.0,0.2,1.4,2.0,15,,,0
+菠菜,spinach,vegetables,18,2.2,2.4,0.5,0.4,1.9,43,,,0
+番茄,tomato,vegetables,19,0.8,4.1,0.1,3.1,1.0,9,,,0
+香蕉,banana,fruits,85,1.5,22.1,0.1,14.8,1.6,1,100,根,0
+蘋果,apple,fruits,51,0.2,13.9,0.1,11.0,1.3,3,150,顆,0
+芭樂,guava,fruits,38,0.8,9.8,0.1,6.5,3.3,4,200,顆,0
+木瓜,papaya,fruits,35,0.6,9.0,0.1,7.2,1.4,4,,,0
+花生,peanuts,fatsAndNuts,583,26.0,20.0,49.0,4.0,8.5,6,30,份,0
+橄欖油,olive oil,fatsAndNuts,884,0.0,0.0,100.0,0.0,0.0,2,15,匙,0
+滷肉飯,braised pork rice,grains,180,5.5,27.0,5.5,2.0,0.8,420,300,碗,1
+雞肉飯,shredded chicken rice,grains,165,7.5,26.0,3.5,1.5,0.7,400,300,碗,1
+火雞肉飯,turkey rice,grains,168,8.0,26.0,3.6,1.5,0.7,410,300,碗,1
+排骨便當,pork chop bento,other,195,8.5,22.0,8.0,2.5,1.5,520,550,個,1
+雞腿便當,chicken leg bento,other,185,9.5,21.5,7.0,2.2,1.5,500,550,個,1
+牛肉麵,beef noodle soup,other,75,5.0,8.5,2.5,0.8,0.6,450,700,碗,1
+水餃,boiled dumplings,other,230,8.5,26.0,10.0,1.2,1.2,420,20,顆,1
+鍋貼,pan-fried dumplings,other,250,8.0,26.0,12.5,1.5,1.2,440,25,個,1
+蛋餅,egg crepe,grains,215,7.5,24.0,9.5,2.0,1.0,480,120,份,1
+飯糰,rice ball,grains,195,5.0,32.0,5.0,1.5,1.0,380,180,個,1
+滷味,braised snacks,other,130,9.0,8.0,7.0,2.0,1.5,700,200,份,1
+雞排,fried chicken cutlet,protein,280,17.0,16.0,17.0,1.0,0.8,600,200,片,1
+鹽酥雞,popcorn chicken,protein,290,16.0,15.0,19.0,1.0,0.7,650,150,份,1
+珍珠奶茶,bubble milk tea,other,95,0.8,18.5,2.0,15.0,0.2,25,700,杯,1
