@@ -6,6 +6,7 @@ import '../../../core/nutrition/energy_calculator.dart';
 import '../../../core/providers.dart';
 import '../domain/profile_enums.dart';
 import 'profile_form.dart';
+import 'weight_trend_card.dart';
 
 /// 查看與修改基本資料。改完會重新計算建議熱量。
 class ProfilePage extends ConsumerWidget {
@@ -89,7 +90,24 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     goal: _goal,
   );
 
-  Future<void> _save() async {
+  /// 記錄體重走和表單同一個儲存流程：重算建議熱量，有手動目標時先詢問。
+  /// 體重和上次一樣也會記一筆，趨勢圖才有那天的點。
+  Future<void> _logWeight() async {
+    final kg = await showDialog<double>(
+      context: context,
+      builder: (_) => const NumberInputDialog(
+        title: '記錄體重',
+        suffix: '公斤',
+        fieldKey: Key('weigh_in_field'),
+        validator: ProfileForm.validateWeight,
+      ),
+    );
+    if (kg == null) return;
+    _weight.text = kg == kg.roundToDouble() ? '${kg.toInt()}' : '$kg';
+    await _save(weighIn: true);
+  }
+
+  Future<void> _save({bool weighIn = false}) async {
     if (!_formKey.currentState!.validate()) return;
 
     final repo = ref.read(profileRepositoryProvider);
@@ -118,7 +136,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
         manualCalorieOverride: keepOverride ? override : null,
       );
 
-      if (_weightKg != widget.latestWeight.weightKg) {
+      if (weighIn || _weightKg != widget.latestWeight.weightKg) {
         await repo.addMeasurement(weightKg: _weightKg);
       }
 
@@ -209,6 +227,11 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          WeightTrendCard(
+            targetKg: widget.profile.targetWeightKg,
+            onLog: _saving ? null : _logWeight,
           ),
           const SizedBox(height: 16),
 

@@ -87,6 +87,13 @@ class ProfileRepository {
             ..limit(1))
           .watchSingleOrNull();
 
+  /// [from] 之後的體重紀錄，舊到新。
+  Stream<List<BodyMeasurement>> watchMeasurementsSince(DateTime from) =>
+      (_db.select(_db.bodyMeasurements)
+            ..where((t) => t.measuredAt.isBiggerOrEqualValue(from))
+            ..orderBy([(t) => OrderingTerm.asc(t.measuredAt)]))
+          .watch();
+
   /// 設定某個生效日起的每日熱量目標。同一天重複設定會覆蓋。
   Future<void> setDailyTarget({
     required DateTime effectiveFrom,

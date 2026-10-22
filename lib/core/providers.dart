@@ -68,6 +68,15 @@ final dayTargetProvider = StreamProvider.family(
       ref.watch(profileRepositoryProvider).watchTargetFor(day),
 );
 
+/// 近 90 天的體重紀錄，舊到新。
+final weightHistoryProvider = StreamProvider(
+  (ref) => ref
+      .watch(profileRepositoryProvider)
+      .watchMeasurementsSince(
+        DateTime.now().subtract(const Duration(days: 90)),
+      ),
+);
+
 /// 最新一筆體重紀錄。
 final latestMeasurementProvider = StreamProvider(
   (ref) => ref.watch(profileRepositoryProvider).watchLatestMeasurement(),

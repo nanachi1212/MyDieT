@@ -110,8 +110,12 @@ void main() {
     expect(title.data, isNot('今日'));
   });
 
-  s23uTest('我的', (tester) async {
+  s23uTest('我的（含體重趨勢圖）', (tester) async {
     await seedProfile();
+    await ProfileRepository(db).addMeasurement(
+      weightKg: 60.2,
+      measuredAt: DateTime.now().subtract(const Duration(days: 30)),
+    );
     await tester.pumpWidget(wrapForTest(const ProfilePage(), db));
     await tester.pumpAndSettle();
     expect(find.text('目前狀態'), findsOneWidget);

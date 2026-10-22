@@ -172,4 +172,51 @@ void main() {
       expect(await repo.targetFor(DateTime.now()), isNotNull);
     });
   });
+
+  group('記錄體重', () {
+    Future<void> logWeight(WidgetTester tester, String kg) async {
+      await tester.tap(find.byKey(const Key('log_weight_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('weigh_in_field')), kg);
+      await tester.tap(find.text('確定'));
+      await tester.pumpAndSettle();
+    }
+
+    widgetTestWithTree('新增一筆紀錄、更新趨勢與目標', (tester) async {
+      await seedProfile();
+      await pumpPage(tester);
+      expect(find.text('目前 58.0 公斤 · 目標 55.0 公斤'), findsOneWidget);
+
+      await logWeight(tester, '56.5');
+
+      expect(await db.select(db.bodyMeasurements).get(), hasLength(2));
+      expect((await repo.latestMeasurement())!.weightKg, 56.5);
+      expect(find.text('目前 56.5 公斤，今天減少 1.5 公斤 · 目標 55.0 公斤'), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+      expect(await repo.targetFor(DateTime.now()), isNotNull);
+    });
+
+    widgetTestWithTree('體重沒變也會記一筆', (tester) async {
+      await seedProfile();
+      await pumpPage(tester);
+
+      await logWeight(tester, '58');
+
+      expect(await db.select(db.bodyMeasurements).get(), hasLength(2));
+    });
+
+    widgetTestWithTree('不合理的體重擋在對話框', (tester) async {
+      await seedProfile();
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('log_weight_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('weigh_in_field')), '3');
+      await tester.tap(find.text('確定'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('體重請輸入 10 到 500 公斤之間'), findsOneWidget);
+      expect(await db.select(db.bodyMeasurements).get(), hasLength(1));
+    });
+  });
 }

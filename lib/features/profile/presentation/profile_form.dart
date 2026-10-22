@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../domain/profile_enums.dart';
 
 /// Onboarding 與 Profile 編輯共用的顯示文字與驗證規則。
@@ -77,4 +79,72 @@ abstract final class ProfileForm {
     if (i < 500 || i > 10000) return '請輸入 500 到 10000 大卡之間';
     return null;
   }
+}
+
+/// 輸入一個數字的對話框，確定時回傳 double，取消回 null。
+///
+/// 自己持有 TextEditingController：如果讓呼叫端在 showDialog 回傳後就 dispose，
+/// 關閉動畫還在播放時輸入框仍會用到它，會丟出
+/// "A TextEditingController was used after being disposed"。
+class NumberInputDialog extends StatefulWidget {
+  const NumberInputDialog({
+    super.key,
+    required this.title,
+    required this.suffix,
+    required this.validator,
+    this.initial = '',
+    this.fieldKey,
+    this.decimal = true,
+  });
+
+  final String title;
+  final String suffix;
+  final String? Function(String?) validator;
+  final String initial;
+  final Key? fieldKey;
+  final bool decimal;
+
+  @override
+  State<NumberInputDialog> createState() => _NumberInputDialogState();
+}
+
+class _NumberInputDialogState extends State<NumberInputDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: Form(
+      key: _formKey,
+      child: TextFormField(
+        key: widget.fieldKey,
+        controller: _controller,
+        keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal),
+        autofocus: true,
+        decoration: InputDecoration(suffixText: widget.suffix),
+        validator: widget.validator,
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('取消'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (_formKey.currentState!.validate()) {
+            Navigator.pop(context, double.parse(_controller.text.trim()));
+          }
+        },
+        child: const Text('確定'),
+      ),
+    ],
+  );
 }

@@ -319,11 +319,18 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   Future<void> _editTarget(int current) async {
-    final result = await showDialog<int>(
+    final result = await showDialog<double>(
       context: context,
-      builder: (_) => _TargetInputDialog(initial: current),
+      builder: (_) => NumberInputDialog(
+        title: '自訂每日熱量目標',
+        initial: '$current',
+        suffix: '大卡',
+        fieldKey: const Key('target_input'),
+        validator: ProfileForm.validateCalorieTarget,
+        decimal: false,
+      ),
     );
-    if (result != null) setState(() => _calorieOverride = result);
+    if (result != null) setState(() => _calorieOverride = result.round());
   }
 
   Widget _row(String label, String value) => Padding(
@@ -335,66 +342,5 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         Text(value),
       ],
     ),
-  );
-}
-
-/// 自訂每日熱量目標的對話框。
-///
-/// 自己持有 TextEditingController：如果讓呼叫端在 showDialog 回傳後就 dispose，
-/// 關閉動畫還在播放時輸入框仍會用到它，會丟出
-/// "A TextEditingController was used after being disposed"。
-class _TargetInputDialog extends StatefulWidget {
-  const _TargetInputDialog({required this.initial});
-
-  final int initial;
-
-  @override
-  State<_TargetInputDialog> createState() => _TargetInputDialogState();
-}
-
-class _TargetInputDialogState extends State<_TargetInputDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: '${widget.initial}');
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('自訂每日熱量目標'),
-    content: Form(
-      key: _formKey,
-      child: TextFormField(
-        key: const Key('target_input'),
-        controller: _controller,
-        keyboardType: TextInputType.number,
-        autofocus: true,
-        decoration: const InputDecoration(suffixText: '大卡'),
-        validator: ProfileForm.validateCalorieTarget,
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('取消'),
-      ),
-      FilledButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            Navigator.pop(context, int.parse(_controller.text.trim()));
-          }
-        },
-        child: const Text('確定'),
-      ),
-    ],
   );
 }
