@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mydiet/app.dart';
 import 'package:mydiet/core/database/app_database.dart';
@@ -11,7 +12,10 @@ import 'helpers/test_app.dart';
 void main() {
   late AppDatabase db;
 
-  setUp(() => db = memoryDb());
+  setUp(() {
+    db = memoryDb();
+    FlutterSecureStorage.setMockInitialValues({});
+  });
 
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(wrapForTest(const MyDietApp(), db));
@@ -47,7 +51,7 @@ void main() {
 
     await tester.tap(find.text('設定'));
     await tester.pumpAndSettle();
-    expect(find.text('Settings placeholder'), findsOneWidget);
+    expect(find.text('拍照辨識的 AI 服務'), findsOneWidget);
   });
 
   widgetTestWithTree('啟動時會匯入台灣食物種子資料', (tester) async {

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/providers.dart';
+import '../../ai/photo_review_page.dart';
 import '../../foods/data/food_repository.dart';
 import '../domain/diary_enums.dart';
 import 'custom_food_page.dart';
@@ -14,6 +17,14 @@ String mealTypeLabel(MealType m) => switch (m) {
   MealType.dinner => '晚餐',
   MealType.snack => '點心',
 };
+
+/// 依時間猜餐別，當作預設值。
+MealType guessMeal(int hour) {
+  if (hour < 10) return MealType.breakfast;
+  if (hour < 15) return MealType.lunch;
+  if (hour < 21) return MealType.dinner;
+  return MealType.snack;
+}
 
 /// 手動新增食物：選餐別 → 搜尋 → 選食物 → 輸入份量 → 加入。
 class AddFoodPage extends ConsumerStatefulWidget {
@@ -38,7 +49,7 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
   @override
   void initState() {
     super.initState();
-    _meal = widget.initialMeal ?? _guessMeal(DateTime.now().hour);
+    _meal = widget.initialMeal ?? guessMeal(DateTime.now().hour);
     _date = widget.date ?? DateTime.now();
     _loadRecent();
   }
@@ -47,13 +58,6 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
   void dispose() {
     _search.dispose();
     super.dispose();
-  }
-
-  static MealType _guessMeal(int hour) {
-    if (hour < 10) return MealType.breakfast;
-    if (hour < 15) return MealType.lunch;
-    if (hour < 21) return MealType.dinner;
-    return MealType.snack;
   }
 
   Future<void> _loadRecent() async {
@@ -97,6 +101,65 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
     }
   }
 
+  /// 拍照或選相簿 → AI 辨識 → 確認頁。確認頁按下加入才會寫入紀錄。
+  Future<void> _recognizePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('拍照'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('從相簿選'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    // 1568px 是 Claude 建議的長邊上限，再大只會變慢、變貴
+    final Uint8List image;
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1568,
+        maxHeight: 1568,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+      image = await file.readAsBytes();
+    } on PlatformException {
+      // 權限被拒、沒有相機、相機正被占用、暫存檔建不出來…
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('無法開啟相機或相簿，請到系統設定允許 MyDieT 使用相機與相片')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final added = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PhotoReviewPage(image: image, meal: _meal, date: _date),
+      ),
+    );
+    if (added == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已加入${mealTypeLabel(_meal)}')));
+      Navigator.of(context).maybePop();
+    }
+  }
+
   Future<void> _createCustomFood() async {
     final food = await Navigator.of(
       context,
@@ -107,7 +170,17 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('新增食物')),
+      appBar: AppBar(
+        title: const Text('新增食物'),
+        actions: [
+          IconButton(
+            key: const Key('photo_recognize_button'),
+            tooltip: '拍照辨識',
+            icon: const Icon(Icons.photo_camera_outlined),
+            onPressed: _recognizePhoto,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

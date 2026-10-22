@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/nutrition/nutrition_facts.dart';
 import '../../../core/providers.dart';
+import '../../ai/photo_review_page.dart';
 import '../data/diary_repository.dart';
 import '../domain/diary_enums.dart';
 import 'add_food_page.dart';
@@ -28,6 +31,38 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   DateTime _date = DateUtils.dateOnly(DateTime.now());
 
   static const _weekdays = '一二三四五六日';
+
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostPhoto();
+  }
+
+  /// Android 開著相機時，系統可能把 App 回收掉；重新開啟後 App 會從這頁
+  /// 開始，所以在這裡把那張照片接回確認頁，不讓使用者白拍。
+  Future<void> _recoverLostPhoto() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    final Uint8List image;
+    try {
+      final lost = await ImagePicker().retrieveLostData();
+      final file = lost.file;
+      if (lost.isEmpty || file == null) return;
+      image = await file.readAsBytes();
+    } catch (_) {
+      return; // 沒有遺失的照片，或平台不支援
+    }
+    if (!mounted) return;
+    final now = DateTime.now();
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => PhotoReviewPage(
+          image: image,
+          meal: guessMeal(now.hour),
+          date: DateUtils.dateOnly(now),
+        ),
+      ),
+    );
+  }
 
   void _shift(int days) =>
       setState(() => _date = DateUtils.addDaysToDate(_date, days));

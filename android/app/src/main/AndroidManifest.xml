@@ -1,7 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 拍照辨識要連到使用者選的 AI 服務。debug 版的 INTERNET 宣告不會帶進 release。 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 關閉自動備份：flutter_secure_storage 的加密資料還原到別的裝置會解不開
+         （InvalidKeyException）。資料留在手機，備份改用 P4 的匯出功能。 -->
     <application
         android:label="MyDieT"
         android:name="${applicationName}"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
