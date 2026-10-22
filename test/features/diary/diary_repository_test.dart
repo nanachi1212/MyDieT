@@ -108,9 +108,9 @@ void main() {
       final e = await logPortion(rice, quantity: 180, unit: ServingUnit.g);
 
       expect(e.grams, 180);
-      expect(e.calories, 234);
-      expect(e.protein, 4.9); // 4.86 四捨五入
-      expect(e.carbs, 50.4);
+      expect(e.calories, closeTo(234, 1e-9));
+      expect(e.protein, closeTo(4.86, 1e-9)); // 存完整精度，不先四捨五入
+      expect(e.carbs, closeTo(50.4, 1e-9));
     });
 
     test('以「份」輸入：1 碗 = 200g', () async {
@@ -358,9 +358,19 @@ void main() {
     expect(u.unit, ServingUnit.g);
     expect(u.grams, 90);
     expect(u.calories, 117); // 130 × 0.9
-    expect(u.sugar, 0.1); // 0.09 → 寫入時四捨五入到 1 位
+    expect(u.sugar, closeTo(0.09, 1e-9)); // 存完整精度，顯示時才四捨五入
     expect(u.fiber, isNull);
     expect(u.displayName, '白飯');
     expect(u.mealType, MealType.lunch);
+  });
+
+  test('很小的份量也保留精度，之後改份量不會變成 0', () async {
+    final rice = await addRice(); // 蛋白質 2.7 g / 100 g
+    final e = await logPortion(rice, quantity: 1, unit: ServingUnit.g);
+    expect(e.protein, closeTo(0.027, 1e-9));
+
+    // PortionEditorSheet.edit 從快照反推每 100g 的方式
+    final per100g = e.facts.scale(100 / e.grams);
+    expect(per100g.protein, closeTo(2.7, 1e-9));
   });
 }

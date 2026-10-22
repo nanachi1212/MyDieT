@@ -53,6 +53,9 @@ enum NutritionSource {
   /// 來自食物資料庫
   database,
 
+  /// 來自食物資料庫，但那筆資料本身是估算值（複合餐點）。UI 要標示估算。
+  databaseEstimated,
+
   /// 來自 AI 估算
   aiEstimated,
 

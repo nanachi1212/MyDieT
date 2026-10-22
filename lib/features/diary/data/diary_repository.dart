@@ -15,6 +15,9 @@ class DiaryRepository {
   ///
   /// [facts] 是「這一份的實際營養」，不是每 100g。寫進去之後就是快照，
   /// 之後 FoodItems 再怎麼修正都不會影響這一筆。
+  ///
+  /// 存完整精度、顯示時才四捨五入：改份量時要從快照反推每 100g，
+  /// 先四捨五入的話 1 公克的紀錄會變成 0，再也還原不回來。
   Future<int> addEntry({
     required DateTime date,
     required MealType mealType,
@@ -28,7 +31,6 @@ class DiaryRepository {
     DateTime? now,
   }) {
     final day = DateTime(date.year, date.month, date.day);
-    final snapshot = facts.rounded();
 
     return _db
         .into(_db.foodEntries)
@@ -41,13 +43,13 @@ class DiaryRepository {
             quantity: quantity,
             unit: unit,
             grams: grams,
-            calories: snapshot.calories,
-            protein: snapshot.protein,
-            carbs: snapshot.carbs,
-            fat: snapshot.fat,
-            sugar: Value(snapshot.sugar),
-            fiber: Value(snapshot.fiber),
-            sodium: Value(snapshot.sodium),
+            calories: facts.calories,
+            protein: facts.protein,
+            carbs: facts.carbs,
+            fat: facts.fat,
+            sugar: Value(facts.sugar),
+            fiber: Value(facts.fiber),
+            sodium: Value(facts.sodium),
             nutritionSource: nutritionSource,
             createdAt: now ?? DateTime.now(),
           ),
@@ -73,19 +75,18 @@ class DiaryRepository {
     required double grams,
     required NutritionFacts facts,
   }) {
-    final s = facts.rounded();
     return (_db.update(_db.foodEntries)..where((t) => t.id.equals(id))).write(
       FoodEntriesCompanion(
         quantity: Value(quantity),
         unit: Value(unit),
         grams: Value(grams),
-        calories: Value(s.calories),
-        protein: Value(s.protein),
-        carbs: Value(s.carbs),
-        fat: Value(s.fat),
-        sugar: Value(s.sugar),
-        fiber: Value(s.fiber),
-        sodium: Value(s.sodium),
+        calories: Value(facts.calories),
+        protein: Value(facts.protein),
+        carbs: Value(facts.carbs),
+        fat: Value(facts.fat),
+        sugar: Value(facts.sugar),
+        fiber: Value(facts.fiber),
+        sodium: Value(facts.sodium),
       ),
     );
   }
