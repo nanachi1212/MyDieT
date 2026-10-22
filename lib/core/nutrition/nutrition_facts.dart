@@ -87,7 +87,7 @@ class NutritionFacts {
     return (a ?? 0) + (b ?? 0);
   }
 
-  /// 四捨五入。計算過程保留完整精度，只在寫入或顯示時呼叫這個。
+  /// 四捨五入。計算與寫入都保留完整精度，只在顯示時呼叫這個。
   NutritionFacts rounded({int decimals = 1}) {
     if (decimals < 0) {
       throw ArgumentError.value(decimals, 'decimals', '不可為負數');

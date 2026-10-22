@@ -6,6 +6,7 @@ import 'package:mydiet/core/nutrition/serving_unit.dart';
 import 'package:mydiet/features/diary/data/diary_repository.dart';
 import 'package:mydiet/features/diary/domain/diary_enums.dart';
 import 'package:mydiet/features/diary/presentation/add_food_page.dart';
+import 'package:mydiet/features/diary/presentation/portion_editor_sheet.dart';
 import 'package:mydiet/features/foods/data/food_repository.dart';
 
 import '../../helpers/test_app.dart';
@@ -222,6 +223,54 @@ void main() {
     expect(find.text('估算'), findsOneWidget);
 
     await tester.tap(findFoodTile('牛肉麵'));
+    await tester.pumpAndSettle();
+    expect(find.text('複合餐點，營養為估算值，實際依店家而異'), findsOneWidget);
+  });
+
+  testWidgets('估算值的紀錄之後打開編輯，提示還在', (tester) async {
+    final now = DateTime(2026, 9, 17);
+    final id = await db
+        .into(db.foodItems)
+        .insert(
+          FoodItemsCompanion.insert(
+            name: '牛肉麵',
+            category: FoodCategory.other,
+            calories: 75,
+            protein: 5,
+            carbs: 8.5,
+            fat: 2.5,
+            source: FoodSource.taiwanSeedEstimated,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    final food = (await foods.byId(id))!;
+
+    useTallSurface(tester);
+    await tester.pumpWidget(
+      wrapForTest(
+        Scaffold(
+          body: PortionEditorSheet.add(
+            food: food,
+            mealType: MealType.lunch,
+            date: today,
+          ),
+        ),
+        db,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_entry_button')));
+    await tester.pumpAndSettle();
+
+    final entry = (await diary.entriesForDay(today)).single;
+    expect(entry.nutritionSource, NutritionSource.databaseEstimated);
+
+    // 儲存時 sheet 已經把自己 pop 掉，先清空再重新掛上編輯模式
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      wrapForTest(Scaffold(body: PortionEditorSheet.edit(entry: entry)), db),
+    );
     await tester.pumpAndSettle();
     expect(find.text('複合餐點，營養為估算值，實際依店家而異'), findsOneWidget);
   });

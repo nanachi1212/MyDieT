@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mydiet/features/profile/presentation/profile_form.dart';
 import 'package:mydiet/core/database/app_database.dart';
 import 'package:mydiet/features/diary/domain/diary_enums.dart';
 import 'package:mydiet/features/profile/data/profile_repository.dart';
@@ -172,5 +173,13 @@ void main() {
       // 早於所有生效日 → 沒有適用目標
       expect(await repo.targetFor(DateTime(2026, 7, 1)), isNull);
     });
+  });
+
+  test('驗證擋下 NaN／Infinity，不會讓計算當掉', () {
+    for (final v in ['NaN', 'Infinity', '-Infinity']) {
+      expect(ProfileForm.validateHeight(v), isNotNull, reason: v);
+      expect(ProfileForm.validateWeight(v), isNotNull, reason: v);
+      expect(ProfileForm.validateTargetWeight(v), isNotNull, reason: v);
+    }
   });
 }

@@ -49,14 +49,14 @@ abstract final class ProfileForm {
 
   static String? validateHeight(String? v) {
     final d = double.tryParse((v ?? '').trim());
-    if (d == null) return '請輸入身高';
+    if (d == null || !d.isFinite) return '請輸入身高';
     if (d < 50 || d > 300) return '身高請輸入 50 到 300 公分之間';
     return null;
   }
 
   static String? validateWeight(String? v) {
     final d = double.tryParse((v ?? '').trim());
-    if (d == null) return '請輸入體重';
+    if (d == null || !d.isFinite) return '請輸入體重';
     if (d < 10 || d > 500) return '體重請輸入 10 到 500 公斤之間';
     return null;
   }
@@ -66,7 +66,7 @@ abstract final class ProfileForm {
     final t = (v ?? '').trim();
     if (t.isEmpty) return null;
     final d = double.tryParse(t);
-    if (d == null) return '請輸入數字';
+    if (d == null || !d.isFinite) return '請輸入數字';
     if (d < 10 || d > 500) return '目標體重請輸入 10 到 500 公斤之間';
     return null;
   }

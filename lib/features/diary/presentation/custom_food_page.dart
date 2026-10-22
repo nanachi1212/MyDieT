@@ -62,7 +62,7 @@ class _CustomFoodPageState extends ConsumerState<CustomFoodPage> {
     final t = (v ?? '').trim();
     if (t.isEmpty) return null;
     final d = double.tryParse(t);
-    if (d == null) return '請輸入數字';
+    if (d == null || !d.isFinite) return '請輸入數字';
     if (d < 0) return '不可為負數';
     return null;
   }

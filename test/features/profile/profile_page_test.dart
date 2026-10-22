@@ -219,4 +219,64 @@ void main() {
       expect(await db.select(db.bodyMeasurements).get(), hasLength(1));
     });
   });
+
+  widgetTestWithTree('沒有體重紀錄時顯示提示，不會一直轉圈', (tester) async {
+    await repo.saveProfile(
+      biologicalSex: BiologicalSex.female,
+      birthDate: DateTime(1990, 5, 20),
+      heightCm: 162,
+      activityLevel: ActivityLevel.moderate,
+      goalType: GoalType.maintain,
+    );
+    await pumpPage(tester);
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.textContaining('找不到體重紀錄'), findsOneWidget);
+  });
+
+  group('手動調整每日目標', () {
+    Future<void> setTarget(WidgetTester tester, String kcal) async {
+      await tester.tap(find.byKey(const Key('edit_target_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('target_input')), kcal);
+      await tester.tap(find.text('確定'));
+      await tester.pumpAndSettle();
+    }
+
+    widgetTestWithTree('原本用建議值 → 可以改成手動目標', (tester) async {
+      await seedProfile();
+      await pumpPage(tester);
+
+      await setTarget(tester, '1600');
+
+      expect((await repo.getProfile())!.manualCalorieOverride, 1600);
+      final target = (await repo.targetFor(DateTime.now()))!;
+      expect(target.calorieTarget, 1600);
+      expect(target.isManualOverride, isTrue);
+      expect(find.text('每日目標：1600 大卡（手動設定）'), findsOneWidget);
+    });
+
+    widgetTestWithTree('已有手動目標 → 可以改成另一個值', (tester) async {
+      await seedProfile(override: 1400);
+      await pumpPage(tester);
+
+      await setTarget(tester, '1550');
+
+      expect((await repo.getProfile())!.manualCalorieOverride, 1550);
+      expect((await repo.targetFor(DateTime.now()))!.calorieTarget, 1550);
+    });
+
+    widgetTestWithTree('改回建議值 → 清掉手動目標', (tester) async {
+      await seedProfile(override: 1400);
+      await pumpPage(tester);
+
+      await tester.tap(find.byKey(const Key('use_suggested_target_button')));
+      await tester.pumpAndSettle();
+
+      expect((await repo.getProfile())!.manualCalorieOverride, isNull);
+      final target = (await repo.targetFor(DateTime.now()))!;
+      expect(target.isManualOverride, isFalse);
+      expect(target.calorieTarget, isNot(1400));
+    });
+  });
 }

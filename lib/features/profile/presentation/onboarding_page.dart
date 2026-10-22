@@ -29,6 +29,35 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   bool _saving = false;
   int? _calorieOverride;
 
+  /// 舊版資料庫已有 Profile、只缺體重時帶入原本的資料，使用者只要補體重，
+  /// 原本的設定（含手動熱量目標）不會被表單預設值蓋掉。
+  bool _prefilled = false;
+  int? _savedOverride;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefill();
+  }
+
+  Future<void> _prefill() async {
+    final p = await ref.read(profileRepositoryProvider).getProfile();
+    if (p == null || !mounted) return;
+    String fmt(double v) => v == v.roundToDouble() ? '${v.toInt()}' : '$v';
+    setState(() {
+      _prefilled = true;
+      _sex = p.biologicalSex;
+      _birthDate = p.birthDate;
+      _height.text = fmt(p.heightCm);
+      _activity = p.activityLevel;
+      _goal = p.goalType;
+      _targetWeight.text = p.targetWeightKg == null
+          ? ''
+          : fmt(p.targetWeightKg!);
+      _savedOverride = p.manualCalorieOverride;
+    });
+  }
+
   @override
   void dispose() {
     _height.dispose();
@@ -51,7 +80,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _showResult = true;
-      _calorieOverride = null;
+      _calorieOverride = _savedOverride;
     });
   }
 
@@ -78,21 +107,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       final repo = ref.read(profileRepositoryProvider);
       final isOverride = calorieTarget != suggested;
 
-      await repo.saveProfile(
-        biologicalSex: _sex,
-        birthDate: _birthDate!,
-        heightCm: _heightCm,
-        activityLevel: _activity,
-        goalType: _goal,
-        targetWeightKg: double.tryParse(_targetWeight.text.trim()),
-        manualCalorieOverride: isOverride ? calorieTarget : null,
-      );
-      await repo.addMeasurement(weightKg: _weightKg);
-      await repo.setDailyTarget(
-        effectiveFrom: DateTime.now(),
-        calorieTarget: calorieTarget,
-        isManualOverride: isOverride,
-      );
+      // 三筆一起寫入：中途被中斷就全部不算，下次啟動會重新 Onboarding，
+      // 不會留下「有 Profile 卻沒體重、沒目標」的半套資料。
+      await ref.read(appDatabaseProvider).transaction(() async {
+        await repo.saveProfile(
+          biologicalSex: _sex,
+          birthDate: _birthDate!,
+          heightCm: _heightCm,
+          activityLevel: _activity,
+          goalType: _goal,
+          targetWeightKg: double.tryParse(_targetWeight.text.trim()),
+          manualCalorieOverride: isOverride ? calorieTarget : null,
+        );
+        await repo.addMeasurement(weightKg: _weightKg);
+        await repo.setDailyTarget(
+          effectiveFrom: DateTime.now(),
+          calorieTarget: calorieTarget,
+          isManualOverride: isOverride,
+        );
+      });
 
       // 觸發 router 離開 Onboarding
       ref.read(onboardingStateProvider).value = true;
@@ -110,7 +143,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('這些資料只存在你的手機裡，用來計算每日熱量目標。'),
+            Text(
+              _prefilled
+                  ? '已帶入你之前的資料，請補上目前體重後按「計算」。'
+                  : '這些資料只存在你的手機裡，用來計算每日熱量目標。',
+            ),
             const SizedBox(height: 20),
 
             const Text('生理性別'),
