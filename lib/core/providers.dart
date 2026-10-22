@@ -56,8 +56,11 @@ final appStartupProvider = FutureProvider<void>((ref) async {
   final db = ref.watch(appDatabaseProvider);
   await TaiwanFoodSeeder(db, loadCsv: ref.watch(foodSeedLoaderProvider)).seed();
 
-  final profile = await ref.watch(profileRepositoryProvider).getProfile();
-  ref.read(onboardingStateProvider).value = profile != null;
+  // Profile 和體重紀錄都要有才算完成。舊版（P0）資料庫只有 Profile，
+  // 要回到 Onboarding 補完，否則「我的」頁與熱量目標都缺資料。
+  final repo = ref.watch(profileRepositoryProvider);
+  ref.read(onboardingStateProvider).value =
+      await repo.getProfile() != null && await repo.latestMeasurement() != null;
 });
 
 /// 目前的 Profile（會隨資料庫變動）。
