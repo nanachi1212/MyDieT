@@ -37,7 +37,7 @@ void main() {
 
     await pumpApp(tester);
 
-    expect(find.text('Dashboard placeholder'), findsOneWidget);
+    expect(find.byKey(const Key('meal_breakfast')), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.text('我的'));
@@ -64,5 +64,30 @@ void main() {
     final foods = await db.select(db.foodItems).get();
     expect(foods.length, greaterThanOrEqualTo(30));
     expect(foods.any((f) => f.name == '白飯'), isTrue);
+  });
+
+  widgetTestWithTree('從今日頁的餐別加入食物，回來就看得到', (tester) async {
+    await ProfileRepository(db).saveProfile(
+      biologicalSex: BiologicalSex.female,
+      birthDate: DateTime(1990, 5, 20),
+      heightCm: 162,
+      activityLevel: ActivityLevel.moderate,
+      goalType: GoalType.maintain,
+    );
+    await ProfileRepository(db).addMeasurement(weightKg: 58);
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('新增午餐'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('food_search_field')), '白飯');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '白飯').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_entry_button')));
+    await tester.pumpAndSettle();
+
+    final lunch = find.byKey(const Key('meal_lunch'));
+    expect(lunch, findsOneWidget);
+    expect(find.descendant(of: lunch, matching: find.text('白飯')), findsOne);
   });
 }

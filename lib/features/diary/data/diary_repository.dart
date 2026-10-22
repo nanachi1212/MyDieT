@@ -54,12 +54,15 @@ class DiaryRepository {
         );
   }
 
-  Future<List<FoodEntry>> entriesForDay(DateTime date) {
+  Future<List<FoodEntry>> entriesForDay(DateTime date) => _day(date).get();
+
+  Stream<List<FoodEntry>> watchDay(DateTime date) => _day(date).watch();
+
+  SimpleSelectStatement<$FoodEntriesTable, FoodEntry> _day(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
-    return (_db.select(_db.foodEntries)
-          ..where((t) => t.date.equals(day))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .get();
+    return _db.select(_db.foodEntries)
+      ..where((t) => t.date.equals(day))
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
   }
 
   Future<void> deleteEntry(int id) =>

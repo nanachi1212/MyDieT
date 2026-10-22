@@ -123,12 +123,18 @@ class ProfileRepository {
   }
 
   /// 查某一天適用的目標：生效日在該日（含）之前的最新一筆。
-  Future<DailyNutritionTarget?> targetFor(DateTime date) {
+  Future<DailyNutritionTarget?> targetFor(DateTime date) =>
+      _target(date).getSingleOrNull();
+
+  Stream<DailyNutritionTarget?> watchTargetFor(DateTime date) =>
+      _target(date).watchSingleOrNull();
+
+  SimpleSelectStatement<$DailyNutritionTargetsTable, DailyNutritionTarget>
+  _target(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
-    return (_db.select(_db.dailyNutritionTargets)
-          ..where((t) => t.effectiveFrom.isSmallerOrEqualValue(day))
-          ..orderBy([(t) => OrderingTerm.desc(t.effectiveFrom)])
-          ..limit(1))
-        .getSingleOrNull();
+    return _db.select(_db.dailyNutritionTargets)
+      ..where((t) => t.effectiveFrom.isSmallerOrEqualValue(day))
+      ..orderBy([(t) => OrderingTerm.desc(t.effectiveFrom)])
+      ..limit(1);
   }
 }

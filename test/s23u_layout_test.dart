@@ -46,6 +46,10 @@ void main() {
       goalType: GoalType.lose,
     );
     await repo.addMeasurement(weightKg: 58);
+    await repo.setDailyTarget(
+      effectiveFrom: DateTime.now(),
+      calorieTarget: 1650,
+    );
   }
 
   s23uTest('Onboarding 填完並顯示計算結果', (tester) async {
@@ -91,6 +95,13 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(find.text('必填'), findsWidgets);
+  });
+
+  s23uTest('今日', (tester) async {
+    await seedProfile();
+    await tester.pumpWidget(wrapForTest(const MyDietApp(), db));
+    await tester.pumpAndSettle();
+    expect(find.text('剩餘'), findsOneWidget);
   });
 
   s23uTest('我的', (tester) async {

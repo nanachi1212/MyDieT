@@ -57,6 +57,17 @@ final userProfileProvider = StreamProvider(
   (ref) => ref.watch(profileRepositoryProvider).watchProfile(),
 );
 
+/// 某一天的飲食紀錄（會隨資料庫變動）。
+final dayEntriesProvider = StreamProvider.family(
+  (ref, DateTime day) => ref.watch(diaryRepositoryProvider).watchDay(day),
+);
+
+/// 某一天適用的熱量目標（會隨資料庫變動）。
+final dayTargetProvider = StreamProvider.family(
+  (ref, DateTime day) =>
+      ref.watch(profileRepositoryProvider).watchTargetFor(day),
+);
+
 /// 最新一筆體重紀錄。
 final latestMeasurementProvider = StreamProvider(
   (ref) => ref.watch(profileRepositoryProvider).watchLatestMeasurement(),

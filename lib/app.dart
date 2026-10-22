@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/providers.dart';
 import 'core/theme/app_theme.dart';
+import 'features/diary/domain/diary_enums.dart';
 import 'features/diary/presentation/add_food_page.dart';
 import 'features/diary/presentation/dashboard_page.dart';
 import 'features/profile/presentation/onboarding_page.dart';
@@ -50,7 +51,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/loading', builder: (_, _) => const _LoadingPage()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingPage()),
-      GoRoute(path: '/diary/add', builder: (_, _) => const AddFoodPage()),
+      GoRoute(
+        path: '/diary/add',
+        builder: (_, state) => AddFoodPage(
+          initialMeal: MealType.values
+              .asNameMap()[state.uri.queryParameters['meal']],
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _HomeShell(shell: shell),
         branches: [

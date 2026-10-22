@@ -37,16 +37,9 @@ class NutritionFacts {
     this.sodium,
   });
 
-  /// 全部為 0（不是「未知」）。日累計的起始值。
-  static const zero = NutritionFacts(
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    sugar: 0,
-    fiber: 0,
-    sodium: 0,
-  );
+  /// 日累計的起始值。sugar / fiber / sodium 是 null，這樣一整天都沒有資料時
+  /// 累計結果仍是「不知道」，而不是 0。
+  static const zero = NutritionFacts(calories: 0, protein: 0, carbs: 0, fat: 0);
 
   final double calories;
   final double protein;
