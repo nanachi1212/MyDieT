@@ -50,7 +50,7 @@ class _Item {
 
   double? get gramsValue {
     final g = double.tryParse(grams.text.trim());
-    return g == null || g <= 0 ? null : g;
+    return g == null || !g.isFinite || g <= 0 ? null : g;
   }
 
   void dispose() {
