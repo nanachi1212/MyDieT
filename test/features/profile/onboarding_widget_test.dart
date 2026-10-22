@@ -202,4 +202,41 @@ void main() {
     await container.read(appStartupProvider.future);
     expect(container.read(onboardingStateProvider).value, isFalse);
   });
+
+  testWidgets('舊資料只有 Profile：帶入原本資料，只補體重，不會被預設值蓋掉', (tester) async {
+    final repo = ProfileRepository(db);
+    await repo.saveProfile(
+      biologicalSex: BiologicalSex.male,
+      birthDate: DateTime(1985, 3, 1),
+      heightCm: 175.5,
+      activityLevel: ActivityLevel.active,
+      goalType: GoalType.gain,
+      targetWeightKg: 72,
+      manualCalorieOverride: 2600,
+    );
+
+    await pumpOnboarding(tester);
+    expect(find.textContaining('已帶入你之前的資料'), findsOneWidget);
+    expect(find.text('175.5'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('weight_field')), '68');
+    await tester.tap(find.byKey(const Key('calculate_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('目前設定的目標：2600 大卡'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('save_profile_button')));
+    await tester.pumpAndSettle();
+
+    final p = (await repo.getProfile())!;
+    expect(p.biologicalSex, BiologicalSex.male);
+    expect(p.birthDate, DateTime(1985, 3, 1));
+    expect(p.heightCm, 175.5);
+    expect(p.activityLevel, ActivityLevel.active);
+    expect(p.goalType, GoalType.gain);
+    expect(p.targetWeightKg, 72);
+    expect(p.manualCalorieOverride, 2600);
+    expect((await repo.latestMeasurement())!.weightKg, 68);
+    final target = (await repo.targetFor(DateTime.now()))!;
+    expect(target.calorieTarget, 2600);
+    expect(target.isManualOverride, isTrue);
+  });
 }
