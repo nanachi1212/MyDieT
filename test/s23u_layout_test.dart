@@ -1,13 +1,21 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mydiet/app.dart';
 import 'package:mydiet/core/database/app_database.dart';
+import 'package:mydiet/core/nutrition/nutrition_facts.dart';
+import 'package:mydiet/core/providers.dart';
+import 'package:mydiet/features/ai/food_recognizer.dart';
+import 'package:mydiet/features/ai/photo_review_page.dart';
 import 'package:mydiet/features/diary/domain/diary_enums.dart';
 import 'package:mydiet/features/diary/presentation/add_food_page.dart';
 import 'package:mydiet/features/diary/presentation/custom_food_page.dart';
 import 'package:mydiet/features/profile/data/profile_repository.dart';
 import 'package:mydiet/features/profile/domain/profile_enums.dart';
 import 'package:mydiet/features/profile/presentation/profile_page.dart';
+import 'package:mydiet/features/settings/presentation/settings_page.dart';
 
 import 'helpers/test_app.dart';
 
@@ -120,4 +128,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('目前狀態'), findsOneWidget);
   });
+
+  s23uTest('拍照確認頁', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({'ai_key_claude': 'k'});
+    final fake = _Fake([
+      const RecognizedFood(
+        name: '炸豬排（厚切，附高麗菜絲與芝麻醬）',
+        grams: 220,
+        per100g: NutritionFacts(calories: 290, protein: 18, carbs: 12, fat: 19),
+      ),
+    ]);
+    await tester.pumpWidget(
+      wrapForTest(
+        PhotoReviewPage(
+          image: Uint8List.fromList([0xFF, 0xD8, 0xFF]),
+          meal: MealType.dinner,
+          date: DateTime.now(),
+        ),
+        db,
+        overrides: [
+          foodRecognizerFactoryProvider.overrideWithValue((_) => fake),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('AI 估算'), findsOneWidget);
+  });
+
+  s23uTest('設定（OpenAI 相容）', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'ai_provider': 'openAiCompatible',
+      'ai_key_openAiCompatible': 'free-key-12345678',
+    });
+    await tester.pumpWidget(wrapForTest(const SettingsPage(), db));
+    await tester.pumpAndSettle();
+    expect(find.text('Gemini'), findsOneWidget);
+  });
+}
+
+class _Fake implements FoodRecognizer {
+  _Fake(this.result);
+
+  final List<RecognizedFood> result;
+
+  @override
+  Future<List<RecognizedFood>> recognize(
+    Uint8List image, {
+    List<String> knownNames = const [],
+  }) async => result;
+
+  @override
+  Future<void> ping() async {}
 }

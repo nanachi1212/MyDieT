@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 拍照辨識要連到使用者選的 AI 服務。debug 版的 INTERNET 宣告不會帶進 release。 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="MyDieT"
         android:name="${applicationName}"

@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/ai/food_recognizer.dart';
 import '../features/diary/data/diary_repository.dart';
 import '../features/foods/data/food_repository.dart';
 import '../features/foods/data/taiwan_food_seeder.dart';
 import '../features/profile/data/profile_repository.dart';
 import 'database/app_database.dart';
+import 'secure/ai_config_store.dart';
 
 /// 全 App 唯一的資料庫實例。測試時用 overrideWithValue 換成記憶體資料庫。
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -25,6 +27,12 @@ final foodRepositoryProvider = Provider(
 final diaryRepositoryProvider = Provider(
   (ref) => DiaryRepository(ref.watch(appDatabaseProvider)),
 );
+
+final aiConfigStoreProvider = Provider((ref) => AiConfigStore());
+
+/// 依設定建立辨識器。測試會覆寫成回傳假資料的版本。
+final foodRecognizerFactoryProvider =
+    Provider<FoodRecognizer Function(AiConfig)>((ref) => recognizerFor);
 
 /// 是否已經完成 Onboarding。
 ///

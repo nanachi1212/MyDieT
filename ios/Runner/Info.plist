@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>拍下餐點照片，讓 AI 辨識食物與份量。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>從相簿選擇餐點照片，讓 AI 辨識食物與份量。</string>
 </dict>
 </plist>

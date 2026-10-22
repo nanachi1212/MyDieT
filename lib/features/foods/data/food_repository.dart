@@ -30,6 +30,22 @@ class FoodRepository {
     _db.foodItems,
   )..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// 名稱完全相同的食物，給拍照辨識對照資料庫用。
+  Future<FoodItem?> byExactName(String name) =>
+      (_db.select(_db.foodItems)
+            ..where((t) => t.name.equals(name.trim()))
+            ..limit(1))
+          .getSingleOrNull();
+
+  /// 所有食物名稱，放進 AI prompt 讓它盡量用資料庫裡的名字。
+  Future<List<String>> allNames() {
+    final name = _db.foodItems.name;
+    return (_db.selectOnly(
+      _db.foodItems,
+      distinct: true,
+    )..addColumns([name])).map((r) => r.read(name)!).get();
+  }
+
   /// 最近使用過的食物，依最後一次記錄時間排序。
   Future<List<FoodItem>> recentlyUsed({int limit = 10}) async {
     final rows = await _db

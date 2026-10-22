@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:mydiet/core/database/app_database.dart';
 import 'package:mydiet/core/providers.dart';
 import 'package:mydiet/core/theme/app_theme.dart';
@@ -38,10 +39,15 @@ AppDatabase memoryDb() {
 }
 
 /// 把一個 widget 包進 MaterialApp + ProviderScope，給 widget test 用。
-Widget wrapForTest(Widget child, AppDatabase db) => ProviderScope(
+Widget wrapForTest(
+  Widget child,
+  AppDatabase db, {
+  List<Override> overrides = const [],
+}) => ProviderScope(
   overrides: [
     appDatabaseProvider.overrideWithValue(db),
     foodSeedLoaderProvider.overrideWithValue(() async => _seedCsv),
+    ...overrides,
   ],
   child: MaterialApp(
     localizationsDelegates: AppTheme.localizationsDelegates,
