@@ -107,37 +107,93 @@ String foodPrompt(List<String> knownNames) =>
     '"calories_per_100g":183,"protein_per_100g":3.1,"carbs_per_100g":41,'
     '"fat_per_100g":0.3}]}';
 
-/// 從 AI 回的文字取出食物清單。容許外面包了 ```json 區塊或多餘說明文字。
+/// 回應不是預期的 JSON 結構（HTML 錯誤頁、代理伺服器、模型亂回）。
+const badResponse = AiException('AI 服務的回應格式不正確，請檢查網址與模型');
+
+/// 從 AI 回的文字取出食物清單。容許外面包了 ```json 區塊、多餘說明文字，
+/// 或說明裡夾了其他 JSON 範例。
+///
+/// 營養值不是有限的非負數（NaN、Infinity、負數、缺欄位）的品項直接略過，
+/// 不會讓後面的計算當掉或把負熱量記進日記。
 List<RecognizedFood> parseFoodItems(String text) {
-  final start = text.indexOf('{');
-  final end = text.lastIndexOf('}');
-  if (start < 0 || end < start) {
-    throw const AiException('看不懂 AI 的回應，請再試一次或改用手動輸入');
-  }
-  final List items;
-  try {
-    items =
-        (jsonDecode(text.substring(start, end + 1)) as Map)['items'] as List;
-  } on Object {
+  final items = _findItemsObject(text)?['items'] as List?;
+  if (items == null) {
     throw const AiException('看不懂 AI 的回應，請再試一次或改用手動輸入');
   }
 
-  double? n(Object? v) => v is num ? v.toDouble() : double.tryParse('$v');
+  double? n(Object? v) {
+    final d = v is num ? v.toDouble() : double.tryParse('$v');
+    return d != null && d.isFinite && d >= 0 ? d : null;
+  }
 
   return [
     for (final i in items.whereType<Map>())
-      if (i['name'] is String && (n(i['grams']) ?? 0) > 0)
+      if ((
+            i['name'],
+            n(i['grams']),
+            n(i['calories_per_100g']),
+            n(i['protein_per_100g']),
+            n(i['carbs_per_100g']),
+            n(i['fat_per_100g']),
+          )
+          case (
+            final String name,
+            final grams?,
+            final calories?,
+            final protein?,
+            final carbs?,
+            final fat?,
+          ) when grams > 0)
         RecognizedFood(
-          name: (i['name'] as String).trim(),
-          grams: n(i['grams'])!,
+          name: name.trim(),
+          grams: grams,
           per100g: NutritionFacts(
-            calories: n(i['calories_per_100g']) ?? 0,
-            protein: n(i['protein_per_100g']) ?? 0,
-            carbs: n(i['carbs_per_100g']) ?? 0,
-            fat: n(i['fat_per_100g']) ?? 0,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
           ),
         ),
   ];
+}
+
+/// 依序試每個括號平衡的 `{...}`，回傳第一個帶 `items` 陣列的物件。
+/// 只取「第一個 { 到最後一個 }」的話，說明文字裡有 JSON 範例就會失敗。
+Map<String, dynamic>? _findItemsObject(String text) {
+  for (
+    var start = text.indexOf('{');
+    start >= 0;
+    start = text.indexOf('{', start + 1)
+  ) {
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+    for (var i = start; i < text.length; i++) {
+      final ch = text[i];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (ch == r'\') {
+          escaped = true;
+        } else if (ch == '"') {
+          inString = false;
+        }
+      } else if (ch == '"') {
+        inString = true;
+      } else if (ch == '{') {
+        depth++;
+      } else if (ch == '}' && --depth == 0) {
+        try {
+          final v = jsonDecode(text.substring(start, i + 1));
+          if (v is Map<String, dynamic> && v['items'] is List) return v;
+        } on FormatException {
+          // 不是合法 JSON，換下一個起點
+        }
+        break;
+      }
+    }
+  }
+  return null;
 }
 
 /// HTTP 狀態碼轉成使用者看得懂的訊息。
@@ -171,7 +227,13 @@ Future<Map<String, dynamic>> postJson(
     throw const AiException('連不上 AI 服務，請檢查網路或網址');
   }
   if (res.statusCode != 200) throw httpError(res.statusCode);
-  return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+  try {
+    final json = jsonDecode(utf8.decode(res.bodyBytes));
+    if (json is Map<String, dynamic>) return json;
+  } on FormatException {
+    // HTML、壞掉的 UTF-8 等，往下丟出統一的錯誤
+  }
+  throw badResponse;
 }
 
 /// 依檔頭判斷圖片格式。AI 服務普遍只收 JPEG / PNG / GIF / WebP，其他格式

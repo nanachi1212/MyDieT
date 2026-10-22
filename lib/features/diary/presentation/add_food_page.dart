@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -16,6 +17,14 @@ String mealTypeLabel(MealType m) => switch (m) {
   MealType.dinner => '晚餐',
   MealType.snack => '點心',
 };
+
+/// 依時間猜餐別，當作預設值。
+MealType guessMeal(int hour) {
+  if (hour < 10) return MealType.breakfast;
+  if (hour < 15) return MealType.lunch;
+  if (hour < 21) return MealType.dinner;
+  return MealType.snack;
+}
 
 /// 手動新增食物：選餐別 → 搜尋 → 選食物 → 輸入份量 → 加入。
 class AddFoodPage extends ConsumerStatefulWidget {
@@ -40,7 +49,7 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
   @override
   void initState() {
     super.initState();
-    _meal = widget.initialMeal ?? _guessMeal(DateTime.now().hour);
+    _meal = widget.initialMeal ?? guessMeal(DateTime.now().hour);
     _date = widget.date ?? DateTime.now();
     _loadRecent();
   }
@@ -49,13 +58,6 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
   void dispose() {
     _search.dispose();
     super.dispose();
-  }
-
-  static MealType _guessMeal(int hour) {
-    if (hour < 10) return MealType.breakfast;
-    if (hour < 15) return MealType.lunch;
-    if (hour < 21) return MealType.dinner;
-    return MealType.snack;
   }
 
   Future<void> _loadRecent() async {
@@ -124,14 +126,25 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
     if (source == null) return;
 
     // 1568px 是 Claude 建議的長邊上限，再大只會變慢、變貴
-    final file = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 1568,
-      maxHeight: 1568,
-      imageQuality: 85,
-    );
-    if (file == null || !mounted) return;
-    final image = await file.readAsBytes();
+    final Uint8List image;
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1568,
+        maxHeight: 1568,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+      image = await file.readAsBytes();
+    } on PlatformException {
+      // 權限被拒、沒有相機、相機正被占用、暫存檔建不出來…
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('無法開啟相機或相簿，請到系統設定允許 MyDieT 使用相機與相片')),
+        );
+      }
+      return;
+    }
     if (!mounted) return;
 
     final added = await Navigator.of(context).push<bool>(

@@ -41,15 +41,23 @@ class AiConfigStore {
   static const _modelKey = 'ai_openai_model';
   static String _apiKeyKey(AiProviderType p) => 'ai_key_${p.name}';
 
+  /// 讀不出來（例如加密金鑰遺失）就當作沒設定，讓使用者重新輸入，
+  /// 不讓設定頁或辨識流程卡住。
+  Future<String?> _read(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } on Exception {
+      return null;
+    }
+  }
+
   Future<AiProviderType> provider() async =>
-      AiProviderType.values.asNameMap()[await _storage.read(
-        key: _providerKey,
-      )] ??
+      AiProviderType.values.asNameMap()[await _read(_providerKey)] ??
       AiProviderType.claude;
 
-  Future<String?> apiKey(AiProviderType p) => _storage.read(key: _apiKeyKey(p));
-  Future<String?> baseUrl() => _storage.read(key: _baseUrlKey);
-  Future<String?> model() => _storage.read(key: _modelKey);
+  Future<String?> apiKey(AiProviderType p) => _read(_apiKeyKey(p));
+  Future<String?> baseUrl() => _read(_baseUrlKey);
+  Future<String?> model() => _read(_modelKey);
 
   /// 目前選用的設定；key（或 OpenAI 相容的網址、模型）沒填齊時回 null。
   Future<AiConfig?> load() async {

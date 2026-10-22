@@ -148,4 +148,51 @@ void main() {
     final heic = Uint8List.fromList([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70]);
     expect(() => imageMediaType(heic), throwsA(isA<AiException>()));
   });
+
+  test('說明文字裡有其他 JSON 範例，仍能取出真正的結果', () {
+    final items = parseFoodItems('格式範例：{"name":"x"}\n實際結果：$itemsJson\n以上');
+    expect(items.single.name, '白飯');
+  });
+
+  test('營養值是 NaN、Infinity 或負數的品項直接略過', () {
+    final items = parseFoodItems(
+      '{"items":[{"name":"壞資料","grams":100,"calories_per_100g":"NaN",'
+      '"protein_per_100g":1,"carbs_per_100g":1,"fat_per_100g":1},'
+      '{"name":"負數","grams":100,"calories_per_100g":-50,'
+      '"protein_per_100g":1,"carbs_per_100g":1,"fat_per_100g":1},'
+      '{"name":"白飯","grams":100,"calories_per_100g":183,'
+      '"protein_per_100g":3.1,"carbs_per_100g":41,"fat_per_100g":0.3}]}',
+    );
+    expect(items.map((i) => i.name), ['白飯']);
+  });
+
+  test('HTTP 200 但回傳 HTML 或格式不對 → AiException', () async {
+    for (final body in ['<html>proxy</html>', '[1,2,3]', '{"content":"x"}']) {
+      final claude = ClaudeFoodRecognizer(
+        'k',
+        client: MockClient((_) async => http.Response(body, 200)),
+      );
+      await expectLater(
+        claude.recognize(jpeg),
+        throwsA(isA<AiException>()),
+        reason: body,
+      );
+      final compat = OpenAiCompatibleRecognizer(
+        apiKey: 'k',
+        baseUrl: 'https://example.com/v1',
+        model: 'm',
+        client: MockClient((_) async => http.Response(body, 200)),
+      );
+      await expectLater(
+        compat.ping(),
+        throwsA(isA<AiException>()),
+        reason: body,
+      );
+      await expectLater(
+        compat.recognize(jpeg),
+        throwsA(isA<AiException>()),
+        reason: body,
+      );
+    }
+  });
 }

@@ -33,22 +33,22 @@ class PhotoReviewPage extends ConsumerStatefulWidget {
 }
 
 class _Item {
-  _Item({
-    required String name,
-    required double grams,
-    required this.per100g,
-    required this.foodItemId,
-    required this.source,
-  }) : name = TextEditingController(text: name),
-       grams = TextEditingController(text: '${grams.round()}');
+  _Item(this.ai)
+    : name = TextEditingController(text: ai.name),
+      grams = TextEditingController(text: '${ai.grams.round()}'),
+      per100g = ai.per100g;
 
+  /// AI 原本的辨識結果。
+  final RecognizedFood ai;
   final TextEditingController name;
   final TextEditingController grams;
-  final NutritionFacts per100g;
+
+  // 以下由 _resolve 依目前名稱對照資料庫後更新
+  NutritionFacts per100g;
 
   /// null = 資料庫查不到，營養用 AI 估算值。
-  final int? foodItemId;
-  final NutritionSource source;
+  int? foodItemId;
+  NutritionSource source = NutritionSource.aiEstimated;
 
   double? get gramsValue {
     final g = double.tryParse(grams.text.trim());
@@ -96,22 +96,9 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
           .read(foodRecognizerFactoryProvider)(config)
           .recognize(widget.image, knownNames: await foods.allNames());
 
-      final items = <_Item>[];
-      for (final f in found) {
-        final db = await foods.byExactName(f.name);
-        items.add(
-          _Item(
-            name: db?.name ?? f.name,
-            grams: f.grams,
-            per100g: db?.per100g ?? f.per100g,
-            foodItemId: db?.id,
-            source: db == null
-                ? NutritionSource.aiEstimated
-                : db.isEstimated
-                ? NutritionSource.databaseEstimated
-                : NutritionSource.database,
-          ),
-        );
+      final items = [for (final f in found) _Item(f)];
+      for (final i in items) {
+        await _resolve(i);
       }
       if (mounted) setState(() => _items = items);
     } on AiException catch (e) {
@@ -121,11 +108,39 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
     }
   }
 
+  /// 依目前的名稱對照資料庫。查到就用資料庫的營養與連結；查不到就用 AI
+  /// 估算值，而名稱被改過時標成 userEdited —— AI 估的是原本那樣食物，
+  /// 不能讓新名字掛著舊食物的熱量或資料庫連結。
+  Future<void> _resolve(_Item item) async {
+    final name = item.name.text.trim();
+    final db = await ref.read(foodRepositoryProvider).byExactName(name);
+    if (item.name.text.trim() != name) return; // 還在打字，等下一次
+    item.per100g = db?.per100g ?? item.ai.per100g;
+    item.foodItemId = db?.id;
+    if (db == null) {
+      item.source = name == item.ai.name
+          ? NutritionSource.aiEstimated
+          : NutritionSource.userEdited;
+    } else {
+      item.source = db.isEstimated
+          ? NutritionSource.databaseEstimated
+          : NutritionSource.database;
+    }
+  }
+
+  Future<void> _rename(_Item item) async {
+    await _resolve(item);
+    if (mounted) setState(() {});
+  }
+
   Future<void> _save() async {
     final items = _items!;
     final diary = ref.read(diaryRepositoryProvider);
     setState(() => _saving = true);
     try {
+      for (final i in items) {
+        await _resolve(i);
+      }
       // 全部成功或全部不寫，不會只記到一半
       await ref.read(appDatabaseProvider).transaction(() async {
         for (final i in items) {
@@ -215,6 +230,7 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
                 index: index,
                 item: item,
                 onChanged: () => setState(() {}),
+                onRenamed: () => _rename(item),
                 onRemove: () => _remove(item),
               ),
           ],
@@ -246,19 +262,21 @@ class _ItemCard extends StatelessWidget {
     required this.index,
     required this.item,
     required this.onChanged,
+    required this.onRenamed,
     required this.onRemove,
   });
 
   final int index;
   final _Item item;
   final VoidCallback onChanged;
+  final VoidCallback onRenamed;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     final g = item.gramsValue;
     final theme = Theme.of(context);
-    final fromDb = item.source != NutritionSource.aiEstimated;
+    final fromDb = item.foodItemId != null;
 
     return Card(
       margin: const EdgeInsets.only(top: 12),
@@ -277,6 +295,7 @@ class _ItemCard extends StatelessWidget {
                       labelText: '名稱',
                       isDense: true,
                     ),
+                    onChanged: (_) => onRenamed(),
                   ),
                 ),
                 IconButton(
@@ -323,6 +342,7 @@ class _ItemCard extends StatelessWidget {
                         switch (item.source) {
                           NutritionSource.database => '資料庫',
                           NutritionSource.databaseEstimated => '資料庫估算',
+                          NutritionSource.userEdited => '已改名（AI 估算）',
                           _ => 'AI 估算',
                         },
                         style: theme.textTheme.labelSmall?.copyWith(

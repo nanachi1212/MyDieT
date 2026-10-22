@@ -58,21 +58,32 @@ class OpenAiCompatibleRecognizer implements FoodRecognizer {
       ],
     });
 
-    final choice = (res['choices'] as List).first as Map;
-    if (choice['finish_reason'] == 'length') {
-      throw const AiException('回應不完整，請再試一次');
+    if (res case {
+      'choices': [
+        {'message': {'content': final String text}} && final Map choice,
+        ...,
+      ],
+    }) {
+      if (choice['finish_reason'] == 'length') {
+        throw const AiException('回應不完整，請再試一次');
+      }
+      return parseFoodItems(text);
     }
-    return parseFoodItems('${(choice['message'] as Map)['content']}');
+    throw badResponse;
   }
 
   @override
-  Future<void> ping() => _post({
-    'model': model,
-    'max_tokens': 16,
-    'messages': [
-      {'role': 'user', 'content': 'Reply with OK.'},
-    ],
-  });
+  Future<void> ping() async {
+    final res = await _post({
+      'model': model,
+      'max_tokens': 16,
+      'messages': [
+        {'role': 'user', 'content': 'Reply with OK.'},
+      ],
+    });
+    if (res case {'choices': List()}) return;
+    throw badResponse;
+  }
 
   Future<Map<String, dynamic>> _post(Map<String, Object> body) => postJson(
     _client,

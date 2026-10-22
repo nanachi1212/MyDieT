@@ -67,7 +67,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (_isClaude) return (AiConfig(provider: _provider, apiKey: key), null);
 
     final url = _baseUrl.text.trim();
-    if (!url.startsWith('http')) return (null, '請輸入以 https:// 開頭的網址');
+    // 只收 https：http 會用明碼送出 API key 和照片
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return (null, '請輸入以 https:// 開頭的網址');
+    }
     if (_model.text.trim().isEmpty) return (null, '請輸入模型名稱');
     return (
       AiConfig(

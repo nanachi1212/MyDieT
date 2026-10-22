@@ -75,4 +75,25 @@ void main() {
     expect(config.model, 'vision-model');
     expect(await store.apiKey(AiProviderType.claude), 'sk-ant-keep-1234');
   });
+
+  widgetTestWithTree('OpenAI 相容端點必須是 https，不會用明碼送出 key 與照片', (tester) async {
+    await pumpPage(tester);
+    await tester.tap(find.text('OpenAI 相容'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('ai_base_url_field')),
+      'http://example.com/v1',
+    );
+    await tester.enterText(find.byKey(const Key('ai_model_field')), 'm');
+    await tester.enterText(
+      find.byKey(const Key('ai_api_key_field')),
+      'k-12345678',
+    );
+    await tester.tap(find.byKey(const Key('ai_save_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('請輸入以 https:// 開頭的網址'), findsOneWidget);
+    expect(await AiConfigStore().load(), isNull);
+  });
 }

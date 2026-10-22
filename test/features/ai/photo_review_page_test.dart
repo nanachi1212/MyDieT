@@ -114,7 +114,8 @@ void main() {
     expect(rice.date, today);
     final sauce = saved.firstWhere((e) => e.displayName == '沙茶醬');
     expect(sauce.grams, 10);
-    expect(sauce.nutritionSource, NutritionSource.aiEstimated);
+    // 改過名且資料庫查不到：營養沿用 AI 對原本食物的估算，標成使用者修改過
+    expect(sauce.nutritionSource, NutritionSource.userEdited);
     expect(sauce.foodItemId, isNull);
   });
 
@@ -157,5 +158,30 @@ void main() {
       'ai_openai_base_url': 'https://example.com/v1',
     });
     expect(await AiConfigStore().load(), isNull);
+  });
+
+  widgetTestWithTree('改名後重新對照資料庫，不沿用舊食物的營養與連結', (tester) async {
+    await pumpPage(tester);
+
+    // AI 的「神秘醬料」改成資料庫有的「白飯」→ 改用白飯的營養（30g × 130）
+    await tester.enterText(find.byKey(const Key('photo_name_1')), '白飯');
+    await tester.pumpAndSettle();
+    expect(textOf(tester, 'photo_kcal_1'), '39 大卡');
+
+    // 資料庫的「白飯」改成查不到的名字 → 斷開資料庫連結、標示已改名
+    await tester.enterText(find.byKey(const Key('photo_name_0')), '炸雞腿');
+    await tester.pumpAndSettle();
+    expect(find.text('已改名（AI 估算）'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('photo_confirm_button')));
+    await tester.pumpAndSettle();
+
+    final saved = await db.select(db.foodEntries).get();
+    final chicken = saved.firstWhere((e) => e.displayName == '炸雞腿');
+    expect(chicken.foodItemId, isNull);
+    expect(chicken.nutritionSource, NutritionSource.userEdited);
+    final rice = saved.firstWhere((e) => e.displayName == '白飯');
+    expect(rice.foodItemId, isNotNull);
+    expect(rice.calories, closeTo(39, 1e-9));
   });
 }

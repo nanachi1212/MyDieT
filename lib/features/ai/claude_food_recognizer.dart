@@ -51,23 +51,31 @@ class ClaudeFoodRecognizer implements FoodRecognizer {
       ],
     }, beta: 'server-side-fallback-2026-07-01');
 
+    final content = switch (res) {
+      {'content': final List content} => content,
+      _ => throw badResponse,
+    };
     return parseFoodItems(
       [
-        for (final block in res['content'] as List)
-          if (block['type'] == 'text') block['text'] as String,
+        for (final block in content)
+          if (block case {'type': 'text', 'text': final String text}) text,
       ].join(),
     );
   }
 
   @override
-  Future<void> ping() => _post({
-    'model': model,
-    'max_tokens': 1024,
-    'output_config': {'effort': 'low'},
-    'messages': [
-      {'role': 'user', 'content': 'Reply with OK.'},
-    ],
-  });
+  Future<void> ping() async {
+    final res = await _post({
+      'model': model,
+      'max_tokens': 1024,
+      'output_config': {'effort': 'low'},
+      'messages': [
+        {'role': 'user', 'content': 'Reply with OK.'},
+      ],
+    });
+    if (res case {'content': List()}) return;
+    throw badResponse;
+  }
 
   Future<Map<String, dynamic>> _post(
     Map<String, Object> body, {
