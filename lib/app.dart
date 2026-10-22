@@ -1,66 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/providers.dart';
 import 'core/theme/app_theme.dart';
+import 'features/diary/domain/diary_enums.dart';
 import 'features/diary/presentation/add_food_page.dart';
 import 'features/diary/presentation/dashboard_page.dart';
+import 'features/profile/presentation/onboarding_page.dart';
 import 'features/profile/presentation/profile_page.dart';
 import 'features/settings/presentation/settings_page.dart';
 
-class MyDietApp extends StatelessWidget {
+class MyDietApp extends ConsumerWidget {
   const MyDietApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 啟動流程（匯入種子食物、判斷是否需要 Onboarding）只需要觸發一次。
+    ref.watch(appStartupProvider);
+
     return MaterialApp.router(
       title: 'MyDieT',
+      localizationsDelegates: AppTheme.localizationsDelegates,
+      supportedLocales: AppTheme.supportedLocales,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      routerConfig: _router,
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }
 
-final _router = GoRouter(
-  initialLocation: '/',
-  routes: [
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, shell) => _HomeShell(shell: shell),
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const DashboardPage(),
-              routes: [
-                GoRoute(
-                  path: 'diary/add',
-                  builder: (context, state) => const AddFoodPage(),
-                ),
-              ],
-            ),
-          ],
+final routerProvider = Provider<GoRouter>((ref) {
+  final onboarding = ref.watch(onboardingStateProvider);
+
+  return GoRouter(
+    initialLocation: '/',
+    refreshListenable: onboarding,
+    redirect: (context, state) {
+      final done = onboarding.value;
+      final loc = state.matchedLocation;
+
+      // 還在判斷中
+      if (done == null) return loc == '/loading' ? null : '/loading';
+      // 還沒設定過 Profile
+      if (!done) return loc == '/onboarding' ? null : '/onboarding';
+      // 已完成，不該再停在啟動用的頁面
+      if (loc == '/onboarding' || loc == '/loading') return '/';
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/loading', builder: (_, _) => const _LoadingPage()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingPage()),
+      GoRoute(
+        path: '/diary/add',
+        builder: (_, state) => AddFoodPage(
+          initialMeal: MealType.values
+              .asNameMap()[state.uri.queryParameters['meal']],
+          date: DateTime.tryParse(state.uri.queryParameters['date'] ?? ''),
         ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfilePage(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/settings',
-              builder: (context, state) => const SettingsPage(),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => _HomeShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/', builder: (_, _) => const DashboardPage()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (_, _) => const SettingsPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+class _LoadingPage extends StatelessWidget {
+  const _LoadingPage();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
 
 class _HomeShell extends StatelessWidget {
   const _HomeShell({required this.shell});
