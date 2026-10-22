@@ -11,16 +11,13 @@ import 'openai_compatible_recognizer.dart';
 /// AI 認出的一樣食物：名稱、估計份量、AI 估的每 100g 營養。
 ///
 /// [per100g] 只在本機食物資料庫查不到時才會被採用（見 PhotoReviewPage）。
+/// AI 沒給或給了無效的營養值時是 null，要靠資料庫或使用者改名補上。
 class RecognizedFood {
-  const RecognizedFood({
-    required this.name,
-    required this.grams,
-    required this.per100g,
-  });
+  const RecognizedFood({required this.name, required this.grams, this.per100g});
 
   final String name;
   final double grams;
-  final NutritionFacts per100g;
+  final NutritionFacts? per100g;
 }
 
 /// 給使用者看的錯誤訊息。不含 API key 或 request 內容。
@@ -113,8 +110,9 @@ const badResponse = AiException('AI 服務的回應格式不正確，請檢查�
 /// 從 AI 回的文字取出食物清單。容許外面包了 ```json 區塊、多餘說明文字，
 /// 或說明裡夾了其他 JSON 範例。
 ///
-/// 營養值不是有限的非負數（NaN、Infinity、負數、缺欄位）的品項直接略過，
-/// 不會讓後面的計算當掉或把負熱量記進日記。
+/// 規格（PROJECT_SPEC §7）：至少要救出名稱與份量。營養值缺欄位或不是
+/// 有限的非負數（NaN、Infinity、負數）時，per100g 為 null，交給資料庫或
+/// 確認頁處理，不會讓計算當掉或把負熱量記進日記。沒有份量的品項才略過。
 List<RecognizedFood> parseFoodItems(String text) {
   final items = _findItemsObject(text)?['items'] as List?;
   if (items == null) {
@@ -126,34 +124,29 @@ List<RecognizedFood> parseFoodItems(String text) {
     return d != null && d.isFinite && d >= 0 ? d : null;
   }
 
+  NutritionFacts? per100g(Map i) => switch ((
+    n(i['calories_per_100g']),
+    n(i['protein_per_100g']),
+    n(i['carbs_per_100g']),
+    n(i['fat_per_100g']),
+  )) {
+    (final calories?, final protein?, final carbs?, final fat?) =>
+      NutritionFacts(
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+      ),
+    _ => null,
+  };
+
   return [
     for (final i in items.whereType<Map>())
-      if ((
-            i['name'],
-            n(i['grams']),
-            n(i['calories_per_100g']),
-            n(i['protein_per_100g']),
-            n(i['carbs_per_100g']),
-            n(i['fat_per_100g']),
-          )
-          case (
-            final String name,
-            final grams?,
-            final calories?,
-            final protein?,
-            final carbs?,
-            final fat?,
-          ) when grams > 0)
-        RecognizedFood(
-          name: name.trim(),
-          grams: grams,
-          per100g: NutritionFacts(
-            calories: calories,
-            protein: protein,
-            carbs: carbs,
-            fat: fat,
-          ),
-        ),
+      if ((i['name'], n(i['grams'])) case (
+        final String name,
+        final grams?,
+      ) when grams > 0 && name.trim().isNotEmpty)
+        RecognizedFood(name: name.trim(), grams: grams, per100g: per100g(i)),
   ];
 }
 

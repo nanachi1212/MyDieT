@@ -184,4 +184,41 @@ void main() {
     expect(rice.foodItemId, isNotNull);
     expect(rice.calories, closeTo(39, 1e-9));
   });
+
+  widgetTestWithTree('AI 沒給營養值：資料庫查不到時不能加入，改成資料庫的名字就可以', (tester) async {
+    fake = FakeRecognizer([const RecognizedFood(name: '不明炸物', grams: 50)]);
+    await pumpPage(tester);
+
+    expect(textOf(tester, 'photo_kcal_0'), '—');
+    expect(find.text('查無營養，請改名或刪除'), findsOneWidget);
+    var button = tester.widget<FilledButton>(
+      find.byKey(const Key('photo_confirm_button')),
+    );
+    expect(button.onPressed, isNull);
+
+    await tester.enterText(find.byKey(const Key('photo_name_0')), '白飯');
+    await tester.pumpAndSettle();
+    expect(textOf(tester, 'photo_kcal_0'), '65 大卡');
+    button = tester.widget<FilledButton>(
+      find.byKey(const Key('photo_confirm_button')),
+    );
+    expect(button.onPressed, isNotNull);
+  });
+
+  widgetTestWithTree('可以改日期（例如接回遺失照片時預設是今天）', (tester) async {
+    await pumpPage(tester);
+    expect(find.text('日期：10/22（四）'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('photo_date')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15'));
+    await tester.tap(find.text('確定'));
+    await tester.pumpAndSettle();
+    expect(find.text('日期：10/15（四）'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('photo_confirm_button')));
+    await tester.pumpAndSettle();
+    final saved = await db.select(db.foodEntries).get();
+    expect(saved.every((e) => e.date == DateTime(2026, 10, 15)), isTrue);
+  });
 }

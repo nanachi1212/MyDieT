@@ -44,7 +44,9 @@ class _Item {
   final TextEditingController grams;
 
   // 以下由 _resolve 依目前名稱對照資料庫後更新
-  NutritionFacts per100g;
+
+  /// null = AI 沒給營養、資料庫也查不到，要改名或刪除才能加入。
+  NutritionFacts? per100g;
 
   /// null = 資料庫查不到，營養用 AI 估算值。
   int? foodItemId;
@@ -63,6 +65,9 @@ class _Item {
 
 class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
   late MealType _meal = widget.meal;
+
+  /// 可以改：接回 Android 遺失的照片時只能先猜今天。
+  late DateTime _date = widget.date;
   List<_Item>? _items;
   String? _error;
   bool _saving = false;
@@ -128,6 +133,17 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
     }
   }
 
+  Future<void> _pickDate() async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(today.year - 5),
+      lastDate: _date.isAfter(today) ? _date : today,
+    );
+    if (picked != null && mounted) setState(() => _date = picked);
+  }
+
   Future<void> _rename(_Item item) async {
     await _resolve(item);
     if (mounted) setState(() {});
@@ -147,13 +163,13 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
           final g = i.gramsValue!;
           final name = i.name.text.trim();
           await diary.addEntry(
-            date: widget.date,
+            date: _date,
             mealType: _meal,
             displayName: name.isEmpty ? '未命名食物' : name,
             quantity: g,
             unit: ServingUnit.g,
             grams: g,
-            facts: i.per100g.scale(g / 100),
+            facts: i.per100g!.scale(g / 100),
             foodItemId: i.foodItemId,
             nutritionSource: i.source,
           );
@@ -176,7 +192,8 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
     final valid =
         items != null &&
         items.isNotEmpty &&
-        items.every((i) => i.gramsValue != null);
+        items.every((i) => i.gramsValue != null && i.per100g != null);
+    final d = _date;
 
     return Scaffold(
       appBar: AppBar(title: const Text('確認辨識結果')),
@@ -211,13 +228,26 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
               ),
             )
           else ...[
+            ListTile(
+              key: const Key('photo_date'),
+              contentPadding: EdgeInsets.zero,
+              enabled: !_saving,
+              leading: const Icon(Icons.calendar_today),
+              title: Text(
+                '日期：${d.month}/${d.day}（${'一二三四五六日'[d.weekday - 1]}）',
+              ),
+              onTap: _pickDate,
+            ),
             SegmentedButton<MealType>(
               segments: [
                 for (final m in MealType.values)
                   ButtonSegment(value: m, label: Text(mealTypeLabel(m))),
               ],
               selected: {_meal},
-              onSelectionChanged: (v) => setState(() => _meal = v.first),
+              // 儲存中鎖住所有控制項，寫入的內容和驗證過的一致
+              onSelectionChanged: _saving
+                  ? null
+                  : (v) => setState(() => _meal = v.first),
             ),
             const SizedBox(height: 8),
             Text(
@@ -229,6 +259,7 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
                 key: ObjectKey(item),
                 index: index,
                 item: item,
+                enabled: !_saving,
                 onChanged: () => setState(() {}),
                 onRenamed: () => _rename(item),
                 onRemove: () => _remove(item),
@@ -252,7 +283,10 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
   }
 
   static int _totalKcal(List<_Item> items) => items
-      .fold(0.0, (a, i) => a + i.per100g.calories * (i.gramsValue ?? 0) / 100)
+      .fold(
+        0.0,
+        (a, i) => a + (i.per100g?.calories ?? 0) * (i.gramsValue ?? 0) / 100,
+      )
       .round();
 }
 
@@ -261,6 +295,7 @@ class _ItemCard extends StatelessWidget {
     super.key,
     required this.index,
     required this.item,
+    required this.enabled,
     required this.onChanged,
     required this.onRenamed,
     required this.onRemove,
@@ -268,6 +303,7 @@ class _ItemCard extends StatelessWidget {
 
   final int index;
   final _Item item;
+  final bool enabled;
   final VoidCallback onChanged;
   final VoidCallback onRenamed;
   final VoidCallback onRemove;
@@ -275,6 +311,7 @@ class _ItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = item.gramsValue;
+    final per100g = item.per100g;
     final theme = Theme.of(context);
     final fromDb = item.foodItemId != null;
 
@@ -291,6 +328,7 @@ class _ItemCard extends StatelessWidget {
                   child: TextField(
                     key: Key('photo_name_$index'),
                     controller: item.name,
+                    enabled: enabled,
                     decoration: const InputDecoration(
                       labelText: '名稱',
                       isDense: true,
@@ -302,7 +340,7 @@ class _ItemCard extends StatelessWidget {
                   key: Key('photo_remove_$index'),
                   tooltip: '刪除這項',
                   icon: const Icon(Icons.close),
-                  onPressed: onRemove,
+                  onPressed: enabled ? onRemove : null,
                 ),
               ],
             ),
@@ -314,6 +352,7 @@ class _ItemCard extends StatelessWidget {
                   child: TextField(
                     key: Key('photo_grams_$index'),
                     controller: item.grams,
+                    enabled: enabled,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -333,13 +372,14 @@ class _ItemCard extends StatelessWidget {
                     children: [
                       Text(
                         key: Key('photo_kcal_$index'),
-                        g == null
+                        g == null || per100g == null
                             ? '—'
-                            : '${(item.per100g.calories * g / 100).round()} 大卡',
+                            : '${(per100g.calories * g / 100).round()} 大卡',
                         style: theme.textTheme.titleMedium,
                       ),
                       Text(
                         switch (item.source) {
+                          _ when per100g == null => '查無營養，請改名或刪除',
                           NutritionSource.database => '資料庫',
                           NutritionSource.databaseEstimated => '資料庫估算',
                           NutritionSource.userEdited => '已改名（AI 估算）',

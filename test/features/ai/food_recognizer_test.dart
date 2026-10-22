@@ -57,8 +57,8 @@ void main() {
       expect(items, hasLength(1));
       expect(items.single.name, '白飯');
       expect(items.single.grams, 180);
-      expect(items.single.per100g.calories, 183);
-      expect(items.single.per100g.sugar, isNull);
+      expect(items.single.per100g!.calories, 183);
+      expect(items.single.per100g!.sugar, isNull);
     });
 
     test('401 → 提示 key 無效', () async {
@@ -154,16 +154,38 @@ void main() {
     expect(items.single.name, '白飯');
   });
 
-  test('營養值是 NaN、Infinity 或負數的品項直接略過', () {
+  test('營養值缺漏或無效（NaN、負數）→ 保留名稱與份量，營養留給資料庫或使用者', () {
     final items = parseFoodItems(
       '{"items":[{"name":"壞資料","grams":100,"calories_per_100g":"NaN",'
       '"protein_per_100g":1,"carbs_per_100g":1,"fat_per_100g":1},'
       '{"name":"負數","grams":100,"calories_per_100g":-50,'
       '"protein_per_100g":1,"carbs_per_100g":1,"fat_per_100g":1},'
+      '{"name":"只有份量","grams":"80"},'
       '{"name":"白飯","grams":100,"calories_per_100g":183,'
-      '"protein_per_100g":3.1,"carbs_per_100g":41,"fat_per_100g":0.3}]}',
+      '"protein_per_100g":3.1,"carbs_per_100g":41,"fat_per_100g":0.3},'
+      '{"name":"沒份量","grams":0}]}',
     );
-    expect(items.map((i) => i.name), ['白飯']);
+    expect(items.map((i) => i.name), ['壞資料', '負數', '只有份量', '白飯']);
+    expect(items[2].grams, 80);
+    expect(
+      [for (final i in items) i.per100g == null],
+      [true, true, true, false],
+    );
+  });
+
+  test('貼完整的 .../chat/completions 也不會重複接一次', () async {
+    late Uri sent;
+    final recognizer = OpenAiCompatibleRecognizer(
+      apiKey: 'k',
+      baseUrl: 'https://example.com/v1/chat/completions/',
+      model: 'm',
+      client: MockClient((req) async {
+        sent = req.url;
+        return jsonResponse({'choices': []});
+      }),
+    );
+    await recognizer.ping();
+    expect(sent.toString(), 'https://example.com/v1/chat/completions');
   });
 
   test('HTTP 200 但回傳 HTML 或格式不對 → AiException', () async {

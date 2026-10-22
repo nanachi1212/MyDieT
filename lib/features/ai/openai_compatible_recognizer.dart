@@ -16,7 +16,9 @@ class OpenAiCompatibleRecognizer implements FoodRecognizer {
     required this.model,
     http.Client? client,
   }) : _endpoint = Uri.parse(
-         '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}/chat/completions',
+         // 貼基底網址（…/v1）或完整端點（…/v1/chat/completions）都可以
+         '${baseUrl.replaceFirst(RegExp(r'/+$'), '').replaceFirst(RegExp(r'/chat/completions$'), '')}'
+         '/chat/completions',
        ),
        _client = client ?? http.Client();
 

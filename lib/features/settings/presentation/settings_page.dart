@@ -181,7 +181,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               key: const Key('ai_base_url_field'),
               controller: _baseUrl,
               keyboardType: TextInputType.url,
-              decoration: const InputDecoration(labelText: '端點網址'),
+              decoration: const InputDecoration(
+                labelText: '端點網址',
+                helperText: '基底網址（…/v1）或完整的 …/chat/completions 都可以',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
