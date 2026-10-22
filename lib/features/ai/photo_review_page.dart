@@ -38,6 +38,7 @@ class _Item {
     required double grams,
     required this.per100g,
     required this.foodItemId,
+    required this.source,
   }) : name = TextEditingController(text: name),
        grams = TextEditingController(text: '${grams.round()}');
 
@@ -47,6 +48,7 @@ class _Item {
 
   /// null = 資料庫查不到，營養用 AI 估算值。
   final int? foodItemId;
+  final NutritionSource source;
 
   double? get gramsValue {
     final g = double.tryParse(grams.text.trim());
@@ -103,6 +105,11 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
             grams: f.grams,
             per100g: db?.per100g ?? f.per100g,
             foodItemId: db?.id,
+            source: db == null
+                ? NutritionSource.aiEstimated
+                : db.isEstimated
+                ? NutritionSource.databaseEstimated
+                : NutritionSource.database,
           ),
         );
       }
@@ -133,9 +140,7 @@ class _PhotoReviewPageState extends ConsumerState<PhotoReviewPage> {
             grams: g,
             facts: i.per100g.scale(g / 100),
             foodItemId: i.foodItemId,
-            nutritionSource: i.foodItemId == null
-                ? NutritionSource.aiEstimated
-                : NutritionSource.database,
+            nutritionSource: i.source,
           );
         }
       });
@@ -253,7 +258,7 @@ class _ItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = item.gramsValue;
     final theme = Theme.of(context);
-    final fromDb = item.foodItemId != null;
+    final fromDb = item.source != NutritionSource.aiEstimated;
 
     return Card(
       margin: const EdgeInsets.only(top: 12),
@@ -315,7 +320,11 @@ class _ItemCard extends StatelessWidget {
                         style: theme.textTheme.titleMedium,
                       ),
                       Text(
-                        fromDb ? '資料庫' : 'AI 估算',
+                        switch (item.source) {
+                          NutritionSource.database => '資料庫',
+                          NutritionSource.databaseEstimated => '資料庫估算',
+                          _ => 'AI 估算',
+                        },
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: fromDb
                               ? theme.colorScheme.primary
