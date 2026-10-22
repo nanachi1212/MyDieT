@@ -22,7 +22,9 @@ class PortionEditorSheet extends ConsumerStatefulWidget {
        per100g = food.per100g,
        servingGrams = food.defaultServingGrams,
        servingLabel = food.defaultServingLabel,
-       estimated = food.isEstimated,
+       source = food.isEstimated
+           ? NutritionSource.databaseEstimated
+           : NutritionSource.database,
        foodItemId = food.id,
        entry = null;
 
@@ -40,7 +42,7 @@ class PortionEditorSheet extends ConsumerStatefulWidget {
           ? entry.grams / entry.quantity
           : null,
       servingLabel = null,
-      estimated = false,
+      source = entry.nutritionSource,
       foodItemId = entry.foodItemId,
       mealType = entry.mealType,
       date = entry.date;
@@ -49,7 +51,9 @@ class PortionEditorSheet extends ConsumerStatefulWidget {
   final NutritionFacts per100g;
   final double? servingGrams;
   final String? servingLabel;
-  final bool estimated;
+
+  /// 新增時寫進紀錄；編輯時用來顯示估算提示。
+  final NutritionSource source;
   final int? foodItemId;
   final MealType mealType;
   final DateTime date;
@@ -88,6 +92,12 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
 
   static String _format(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+
+  String? get _estimateNote => switch (widget.source) {
+    NutritionSource.databaseEstimated => '複合餐點，營養為估算值，實際依店家而異',
+    NutritionSource.aiEstimated => 'AI 估算的營養值，僅供參考',
+    _ => null,
+  };
 
   List<ServingUnit> get _units => [
     ServingUnit.g,
@@ -132,7 +142,7 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
           grams: p.grams,
           facts: p.facts,
           foodItemId: widget.foodItemId,
-          nutritionSource: NutritionSource.database,
+          nutritionSource: widget.source,
         );
       } else {
         await repo.updatePortion(
@@ -192,7 +202,7 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.name, style: Theme.of(context).textTheme.titleLarge),
-            if (widget.estimated) ...[
+            if (_estimateNote case final note?) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -200,7 +210,7 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      '複合餐點，營養為估算值，實際依店家而異',
+                      note,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
