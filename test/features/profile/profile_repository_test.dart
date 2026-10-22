@@ -173,40 +173,4 @@ void main() {
       expect(await repo.targetFor(DateTime(2026, 7, 1)), isNull);
     });
   });
-
-  group('computeSuggestedCalories', () {
-    test('缺 Profile 或體重時回 null', () async {
-      expect(await repo.computeSuggestedCalories(), isNull);
-
-      await saveDefault();
-      expect(await repo.computeSuggestedCalories(), isNull);
-    });
-
-    test('有資料時算得出建議熱量', () async {
-      await saveDefault(goal: GoalType.maintain);
-      await repo.addMeasurement(weightKg: 58);
-
-      final kcal = await repo.computeSuggestedCalories(
-        now: DateTime(2026, 9, 17),
-      );
-      expect(kcal, isNotNull);
-      expect(kcal, greaterThan(1000));
-      expect(kcal, lessThan(3000));
-    });
-
-    test('男女在相同條件下結果不同', () async {
-      await saveDefault(sex: BiologicalSex.female, goal: GoalType.maintain);
-      await repo.addMeasurement(weightKg: 58);
-      final female = await repo.computeSuggestedCalories(
-        now: DateTime(2026, 9, 17),
-      );
-
-      await saveDefault(sex: BiologicalSex.male, goal: GoalType.maintain);
-      final male = await repo.computeSuggestedCalories(
-        now: DateTime(2026, 9, 17),
-      );
-
-      expect(male, greaterThan(female!));
-    });
-  });
 }

@@ -139,11 +139,12 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
                   child: TextField(
                     key: const Key('quantity_field'),
                     controller: _quantity,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     autofocus: true,
                     decoration: InputDecoration(
                       labelText: '份量',
-                      border: const OutlineInputBorder(),
                       errorText: p == null ? '請輸入 0 以上的數字' : null,
                     ),
                     onChanged: (_) => setState(() {}),

@@ -130,7 +130,6 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
               decoration: const InputDecoration(
                 hintText: '搜尋食物，例如：白飯、雞腿',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
               ),
               onChanged: _runSearch,
             ),

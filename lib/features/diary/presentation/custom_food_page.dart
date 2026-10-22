@@ -55,14 +55,8 @@ class _CustomFoodPageState extends ConsumerState<CustomFoodPage> {
     FoodCategory.other => '其他',
   };
 
-  String? _required(String? v) {
-    final t = (v ?? '').trim();
-    if (t.isEmpty) return '必填';
-    final d = double.tryParse(t);
-    if (d == null) return '請輸入數字';
-    if (d < 0) return '不可為負數';
-    return null;
-  }
+  String? _required(String? v) =>
+      (v ?? '').trim().isEmpty ? '必填' : _optional(v);
 
   String? _optional(String? v) {
     final t = (v ?? '').trim();
@@ -115,20 +109,14 @@ class _CustomFoodPageState extends ConsumerState<CustomFoodPage> {
             TextFormField(
               key: const Key('custom_name_field'),
               controller: _name,
-              decoration: const InputDecoration(
-                labelText: '食物名稱',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: '食物名稱'),
               validator: (v) => (v ?? '').trim().isEmpty ? '請輸入食物名稱' : null,
             ),
             const SizedBox(height: 16),
 
             DropdownButtonFormField<FoodCategory>(
               initialValue: _category,
-              decoration: const InputDecoration(
-                labelText: '食物分類',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: '食物分類'),
               items: [
                 for (final c in FoodCategory.values)
                   DropdownMenuItem(value: c, child: Text(categoryLabel(c))),
@@ -180,12 +168,8 @@ class _CustomFoodPageState extends ConsumerState<CustomFoodPage> {
     child: TextFormField(
       key: Key(key),
       controller: c,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: suffix,
-        border: const OutlineInputBorder(),
-      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(labelText: label, suffixText: suffix),
       validator: validator,
     ),
   );

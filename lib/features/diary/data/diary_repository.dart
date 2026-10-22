@@ -62,14 +62,6 @@ class DiaryRepository {
         .get();
   }
 
-  Stream<List<FoodEntry>> watchDay(DateTime date) {
-    final day = DateTime(date.year, date.month, date.day);
-    return (_db.select(_db.foodEntries)
-          ..where((t) => t.date.equals(day))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .watch();
-  }
-
   Future<void> deleteEntry(int id) =>
       (_db.delete(_db.foodEntries)..where((t) => t.id.equals(id))).go();
 }

@@ -24,5 +24,8 @@ abstract final class AppTheme {
 
   static ThemeData _build(Brightness brightness) => ThemeData(
     colorScheme: ColorScheme.fromSeed(seedColor: _seed, brightness: brightness),
+    inputDecorationTheme: const InputDecorationTheme(
+      border: OutlineInputBorder(),
+    ),
   );
 }

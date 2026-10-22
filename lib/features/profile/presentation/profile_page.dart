@@ -237,11 +237,10 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           TextFormField(
             key: const Key('profile_height_field'),
             controller: _height,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: '身高',
               suffixText: '公分',
-              border: OutlineInputBorder(),
             ),
             validator: ProfileForm.validateHeight,
           ),
@@ -250,12 +249,11 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           TextFormField(
             key: const Key('profile_weight_field'),
             controller: _weight,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: '目前體重',
               suffixText: '公斤',
               helperText: '改動後會新增一筆體重紀錄',
-              border: OutlineInputBorder(),
             ),
             validator: ProfileForm.validateWeight,
           ),
@@ -294,11 +292,10 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           TextFormField(
             key: const Key('profile_target_weight_field'),
             controller: _targetWeight,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: '目標體重（可不填）',
               suffixText: '公斤',
-              border: OutlineInputBorder(),
             ),
             validator: ProfileForm.validateTargetWeight,
           ),

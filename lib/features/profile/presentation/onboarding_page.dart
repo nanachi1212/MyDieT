@@ -146,11 +146,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             TextFormField(
               key: const Key('height_field'),
               controller: _height,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: '身高',
                 suffixText: '公分',
-                border: OutlineInputBorder(),
               ),
               validator: ProfileForm.validateHeight,
               onChanged: (_) => setState(() => _showResult = false),
@@ -160,11 +161,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             TextFormField(
               key: const Key('weight_field'),
               controller: _weight,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: '目前體重',
                 suffixText: '公斤',
-                border: OutlineInputBorder(),
               ),
               validator: ProfileForm.validateWeight,
               onChanged: (_) => setState(() => _showResult = false),
@@ -214,11 +216,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             TextFormField(
               key: const Key('target_weight_field'),
               controller: _targetWeight,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: '目標體重（可不填）',
                 suffixText: '公斤',
-                border: OutlineInputBorder(),
               ),
               validator: ProfileForm.validateTargetWeight,
             ),
@@ -327,7 +330,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [Text(label), Text(value)],
+      children: [
+        Expanded(child: Text(label)),
+        Text(value),
+      ],
     ),
   );
 }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// Macro 佔熱量的百分比。
 class MacroPercent {
   const MacroPercent({
@@ -109,16 +111,8 @@ class NutritionFacts {
   }
 
   static double _round(double v, int decimals) {
-    final f = _pow10(decimals);
+    final f = math.pow(10, decimals);
     return (v * f).roundToDouble() / f;
-  }
-
-  static double _pow10(int n) {
-    var r = 1.0;
-    for (var i = 0; i < n; i++) {
-      r *= 10;
-    }
-    return r;
   }
 
   /// 三大 macro 各自的熱量佔比。

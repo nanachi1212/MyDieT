@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
-import '../../../core/nutrition/energy_calculator.dart';
 import '../../diary/domain/diary_enums.dart';
 import '../domain/profile_enums.dart';
 
@@ -131,21 +130,5 @@ class ProfileRepository {
           ..orderBy([(t) => OrderingTerm.desc(t.effectiveFrom)])
           ..limit(1))
         .getSingleOrNull();
-  }
-
-  /// 依 Profile 與最新體重算出建議熱量。缺體重時回 null。
-  Future<int?> computeSuggestedCalories({DateTime? now}) async {
-    final profile = await getProfile();
-    final weight = await latestMeasurement();
-    if (profile == null || weight == null) return null;
-
-    return EnergyCalculator.dailyCalorieTarget(
-      sex: profile.biologicalSex,
-      ageYears: EnergyCalculator.ageFromBirthDate(profile.birthDate, now: now),
-      heightCm: profile.heightCm,
-      weightKg: weight.weightKg,
-      activityLevel: profile.activityLevel,
-      goal: profile.goalType,
-    );
   }
 }
