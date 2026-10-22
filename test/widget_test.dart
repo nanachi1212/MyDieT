@@ -123,4 +123,21 @@ void main() {
     expect(saved.mealType, MealType.dinner);
     expect(find.text('白飯'), findsOneWidget);
   });
+
+  widgetTestWithTree('舊資料只有 Profile、沒有體重 → 回到 Onboarding 補完，不會卡住', (
+    tester,
+  ) async {
+    await ProfileRepository(db).saveProfile(
+      biologicalSex: BiologicalSex.female,
+      birthDate: DateTime(1990, 5, 20),
+      heightCm: 162,
+      activityLevel: ActivityLevel.moderate,
+      goalType: GoalType.maintain,
+    );
+
+    await pumpApp(tester);
+
+    expect(find.text('建立你的資料'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
 }

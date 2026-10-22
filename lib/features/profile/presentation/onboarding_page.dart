@@ -78,21 +78,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       final repo = ref.read(profileRepositoryProvider);
       final isOverride = calorieTarget != suggested;
 
-      await repo.saveProfile(
-        biologicalSex: _sex,
-        birthDate: _birthDate!,
-        heightCm: _heightCm,
-        activityLevel: _activity,
-        goalType: _goal,
-        targetWeightKg: double.tryParse(_targetWeight.text.trim()),
-        manualCalorieOverride: isOverride ? calorieTarget : null,
-      );
-      await repo.addMeasurement(weightKg: _weightKg);
-      await repo.setDailyTarget(
-        effectiveFrom: DateTime.now(),
-        calorieTarget: calorieTarget,
-        isManualOverride: isOverride,
-      );
+      // 三筆一起寫入：中途被中斷就全部不算，下次啟動會重新 Onboarding，
+      // 不會留下「有 Profile 卻沒體重、沒目標」的半套資料。
+      await ref.read(appDatabaseProvider).transaction(() async {
+        await repo.saveProfile(
+          biologicalSex: _sex,
+          birthDate: _birthDate!,
+          heightCm: _heightCm,
+          activityLevel: _activity,
+          goalType: _goal,
+          targetWeightKg: double.tryParse(_targetWeight.text.trim()),
+          manualCalorieOverride: isOverride ? calorieTarget : null,
+        );
+        await repo.addMeasurement(weightKg: _weightKg);
+        await repo.setDailyTarget(
+          effectiveFrom: DateTime.now(),
+          calorieTarget: calorieTarget,
+          isManualOverride: isOverride,
+        );
+      });
 
       // 觸發 router 離開 Onboarding
       ref.read(onboardingStateProvider).value = true;

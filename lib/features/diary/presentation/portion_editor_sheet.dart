@@ -104,7 +104,7 @@ class _PortionEditorSheetState extends ConsumerState<PortionEditorSheet> {
   /// 輸入無效時回 null，UI 顯示提示而不是崩潰。
   ({double grams, NutritionFacts facts})? get _preview {
     final q = double.tryParse(_quantity.text.trim());
-    if (q == null || q <= 0) return null;
+    if (q == null || !q.isFinite || q <= 0) return null;
     return NutritionCalculator.forPortion(
       per100g: widget.per100g,
       quantity: q,

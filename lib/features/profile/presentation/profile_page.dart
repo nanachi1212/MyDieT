@@ -24,6 +24,16 @@ class ProfilePage extends ConsumerWidget {
           _ProfileForm(profile: p, latestWeight: w),
         (AsyncError(:final error), _) ||
         (_, AsyncError(:final error)) => Center(child: Text('讀取資料失敗：$error')),
+        // 讀完了但缺資料（舊版資料庫）。重開 App 會回到 Onboarding 補完。
+        (AsyncData(), AsyncData()) => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              '找不到體重紀錄。請關閉並重新開啟 App，完成初始設定後即可使用。',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -89,6 +99,69 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     activityLevel: _activity,
     goal: _goal,
   );
+
+  /// 依「已儲存」的資料算建議熱量，不受表單裡還沒存的修改影響。
+  int get _savedSuggested {
+    final p = widget.profile;
+    return EnergyCalculator.dailyCalorieTarget(
+      sex: p.biologicalSex,
+      ageYears: EnergyCalculator.ageFromBirthDate(p.birthDate),
+      heightCm: p.heightCm,
+      weightKg: widget.latestWeight.weightKg,
+      activityLevel: p.activityLevel,
+      goal: p.goalType,
+    );
+  }
+
+  Future<void> _editTarget() async {
+    final current = widget.profile.manualCalorieOverride ?? _savedSuggested;
+    final result = await showDialog<double>(
+      context: context,
+      builder: (_) => NumberInputDialog(
+        title: '自訂每日熱量目標',
+        initial: '$current',
+        suffix: '大卡',
+        fieldKey: const Key('target_input'),
+        validator: ProfileForm.validateCalorieTarget,
+        decimal: false,
+      ),
+    );
+    if (result != null) await _setManualTarget(result.round());
+  }
+
+  /// [kcal] 為 null = 取消手動目標，改回建議值。只動目標，表單其他欄位
+  /// 沒存的修改不會被一起寫進去。
+  Future<void> _setManualTarget(int? kcal) async {
+    final p = widget.profile;
+    final target = kcal ?? _savedSuggested;
+    final repo = ref.read(profileRepositoryProvider);
+    setState(() => _saving = true);
+    try {
+      await ref.read(appDatabaseProvider).transaction(() async {
+        await repo.saveProfile(
+          biologicalSex: p.biologicalSex,
+          birthDate: p.birthDate,
+          heightCm: p.heightCm,
+          activityLevel: p.activityLevel,
+          goalType: p.goalType,
+          targetWeightKg: p.targetWeightKg,
+          manualCalorieOverride: kcal,
+        );
+        await repo.setDailyTarget(
+          effectiveFrom: DateTime.now(),
+          calorieTarget: target,
+          isManualOverride: kcal != null,
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('每日目標改為 $target 大卡')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   /// 記錄體重走和表單同一個儲存流程：重算建議熱量，有手動目標時先詢問。
   /// 體重和上次一樣也會記一筆，趨勢圖才有那天的點。
@@ -223,6 +296,25 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                     override == null
                         ? '每日目標：依建議值自動計算'
                         : '每日目標：$override 大卡（手動設定）',
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      TextButton.icon(
+                        key: const Key('edit_target_button'),
+                        icon: const Icon(Icons.edit),
+                        label: const Text('自行調整目標'),
+                        onPressed: _saving ? null : _editTarget,
+                      ),
+                      if (override != null)
+                        TextButton(
+                          key: const Key('use_suggested_target_button'),
+                          onPressed: _saving
+                              ? null
+                              : () => _setManualTarget(null),
+                          child: const Text('改回建議值'),
+                        ),
+                    ],
                   ),
                 ],
               ),
