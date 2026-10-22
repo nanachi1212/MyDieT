@@ -65,6 +65,31 @@ class DiaryRepository {
       ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
   }
 
+  /// 改份量。[facts] 是新份量的實際營養，同樣以快照寫入。
+  Future<void> updatePortion(
+    int id, {
+    required double quantity,
+    required ServingUnit unit,
+    required double grams,
+    required NutritionFacts facts,
+  }) {
+    final s = facts.rounded();
+    return (_db.update(_db.foodEntries)..where((t) => t.id.equals(id))).write(
+      FoodEntriesCompanion(
+        quantity: Value(quantity),
+        unit: Value(unit),
+        grams: Value(grams),
+        calories: Value(s.calories),
+        protein: Value(s.protein),
+        carbs: Value(s.carbs),
+        fat: Value(s.fat),
+        sugar: Value(s.sugar),
+        fiber: Value(s.fiber),
+        sodium: Value(s.sodium),
+      ),
+    );
+  }
+
   Future<void> deleteEntry(int id) =>
       (_db.delete(_db.foodEntries)..where((t) => t.id.equals(id))).go();
 }

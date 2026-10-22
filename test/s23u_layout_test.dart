@@ -102,6 +102,12 @@ void main() {
     await tester.pumpWidget(wrapForTest(const MyDietApp(), db));
     await tester.pumpAndSettle();
     expect(find.text('剩餘'), findsOneWidget);
+
+    // 非今天時標題變成「10/21（二）」，加上三個按鈕也要放得下
+    await tester.tap(find.byTooltip('前一天'));
+    await tester.pumpAndSettle();
+    final title = tester.widget<Text>(find.byKey(const Key('dashboard_date')));
+    expect(title.data, isNot('今日'));
   });
 
   s23uTest('我的', (tester) async {

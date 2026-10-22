@@ -95,4 +95,89 @@ void main() {
     expect(find.text('超過'), findsOneWidget);
     expect(textOf(tester, 'remaining_calories'), '150');
   });
+
+  widgetTestWithTree('切換到前一天只看到那天的紀錄', (tester) async {
+    final yesterday = today.subtract(const Duration(days: 1));
+    await add(
+      MealType.lunch,
+      '今天的飯',
+      const NutritionFacts(calories: 100, protein: 1, carbs: 1, fat: 1),
+    );
+    await diary.addEntry(
+      date: yesterday,
+      mealType: MealType.dinner,
+      displayName: '昨天的麵',
+      quantity: 100,
+      unit: ServingUnit.g,
+      grams: 100,
+      facts: const NutritionFacts(calories: 400, protein: 1, carbs: 1, fat: 1),
+    );
+
+    await tester.pumpWidget(wrapForTest(const DashboardPage(), db));
+    await tester.pumpAndSettle();
+    expect(find.text('今日'), findsOneWidget);
+    // 今天不能再往後
+    final next = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.chevron_right),
+    );
+    expect(next.onPressed, isNull);
+
+    await tester.tap(find.byTooltip('前一天'));
+    await tester.pumpAndSettle();
+    expect(find.text('今日'), findsNothing);
+    expect(find.text('昨天的麵'), findsOneWidget);
+    expect(find.text('今天的飯'), findsNothing);
+
+    await tester.tap(find.byTooltip('後一天'));
+    await tester.pumpAndSettle();
+    expect(find.text('今天的飯'), findsOneWidget);
+  });
+
+  widgetTestWithTree('點紀錄可以改份量', (tester) async {
+    await add(
+      MealType.lunch,
+      '白飯',
+      const NutritionFacts(calories: 260, protein: 5, carbs: 56, fat: 1),
+    );
+    await tester.pumpWidget(wrapForTest(const DashboardPage(), db));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('白飯'));
+    await tester.pumpAndSettle();
+    expect(find.text('100'), findsOneWidget); // 帶入原本的份量
+    await tester.enterText(find.byKey(const Key('quantity_field')), '50');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_entry_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('130 大卡'), findsWidgets);
+    final entry = (await diary.entriesForDay(today)).single;
+    expect(entry.grams, 50);
+    expect(entry.calories, 130);
+  });
+
+  widgetTestWithTree('刪除前會確認，確認後才刪', (tester) async {
+    await add(
+      MealType.snack,
+      '餅乾',
+      const NutritionFacts(calories: 200, protein: 2, carbs: 30, fat: 8),
+    );
+    await tester.pumpWidget(wrapForTest(const DashboardPage(), db));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('餅乾'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete_entry_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(await diary.entriesForDay(today), hasLength(1));
+
+    await tester.tap(find.byKey(const Key('delete_entry_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_delete_button')));
+    await tester.pumpAndSettle();
+    expect(await diary.entriesForDay(today), isEmpty);
+    expect(find.text('餅乾'), findsNothing);
+  });
 }

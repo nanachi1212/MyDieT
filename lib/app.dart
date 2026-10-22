@@ -56,6 +56,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => AddFoodPage(
           initialMeal: MealType.values
               .asNameMap()[state.uri.queryParameters['meal']],
+          date: DateTime.tryParse(state.uri.queryParameters['date'] ?? ''),
         ),
       ),
       StatefulShellRoute.indexedStack(

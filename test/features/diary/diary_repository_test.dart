@@ -341,4 +341,26 @@ void main() {
     await diary.deleteEntry(e.id);
     expect(await diary.entriesForDay(today), isEmpty);
   });
+
+  test('改份量會重寫營養快照，其他欄位不動', () async {
+    final rice = await addRice();
+    final e = await logPortion(rice, quantity: 1, unit: ServingUnit.serving);
+
+    await diary.updatePortion(
+      e.id,
+      quantity: 90,
+      unit: ServingUnit.g,
+      grams: 90,
+      facts: rice.per100g.scale(0.9),
+    );
+
+    final u = (await diary.entriesForDay(today)).single;
+    expect(u.unit, ServingUnit.g);
+    expect(u.grams, 90);
+    expect(u.calories, 117); // 130 × 0.9
+    expect(u.sugar, 0.1); // 0.09 → 寫入時四捨五入到 1 位
+    expect(u.fiber, isNull);
+    expect(u.displayName, '白飯');
+    expect(u.mealType, MealType.lunch);
+  });
 }

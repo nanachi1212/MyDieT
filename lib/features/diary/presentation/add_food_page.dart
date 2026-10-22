@@ -86,7 +86,7 @@ class _AddFoodPageState extends ConsumerState<AddFoodPage> {
       context: context,
       isScrollControlled: true,
       builder: (_) =>
-          PortionEditorSheet(food: food, mealType: _meal, date: _date),
+          PortionEditorSheet.add(food: food, mealType: _meal, date: _date),
     );
 
     if (added == true && mounted) {

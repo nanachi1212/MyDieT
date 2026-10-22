@@ -8,26 +8,85 @@ import '../../../core/providers.dart';
 import '../data/diary_repository.dart';
 import '../domain/diary_enums.dart';
 import 'add_food_page.dart';
+import 'portion_editor_sheet.dart';
 
-/// 今日：目標／已攝取／剩餘、四個餐別、七項營養素累計與 Macro %。
-class DashboardPage extends ConsumerWidget {
+/// 新增食物頁的路徑，帶上餐別與日期。
+String addFoodPath(DateTime date, [MealType? meal]) =>
+    '/diary/add?date=${date.toIso8601String().substring(0, 10)}'
+    '${meal == null ? '' : '&meal=${meal.name}'}';
+
+/// 每日總覽：目標／已攝取／剩餘、四個餐別、七項營養素累計與 Macro %。
+/// 預設今天，可切換到前一天／後一天或任選日期。
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  DateTime _date = DateUtils.dateOnly(DateTime.now());
+
+  static const _weekdays = '一二三四五六日';
+
+  void _shift(int days) =>
+      setState(() => _date = DateUtils.addDaysToDate(_date, days));
+
+  Future<void> _pickDate() async {
     final today = DateUtils.dateOnly(DateTime.now());
-    final entries = ref.watch(dayEntriesProvider(today));
-    final target = ref.watch(dayTargetProvider(today)).value?.calorieTarget;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(today.year - 5),
+      lastDate: today,
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isToday = DateUtils.isSameDay(_date, DateTime.now());
+    final entries = ref.watch(dayEntriesProvider(_date));
+    final target = ref.watch(dayTargetProvider(_date)).value?.calorieTarget;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('今日')),
+      appBar: AppBar(
+        title: Text(
+          key: const Key('dashboard_date'),
+          isToday
+              ? '今日'
+              : '${_date.month}/${_date.day}（${_weekdays[_date.weekday - 1]}）',
+        ),
+        actions: [
+          IconButton(
+            tooltip: '前一天',
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => _shift(-1),
+          ),
+          IconButton(
+            tooltip: '選日期',
+            icon: const Icon(Icons.calendar_month),
+            onPressed: _pickDate,
+          ),
+          IconButton(
+            tooltip: '後一天',
+            icon: const Icon(Icons.chevron_right),
+            // 不記未來的日子
+            onPressed: isToday ? null : () => _shift(1),
+          ),
+        ],
+      ),
       body: switch (entries) {
-        AsyncData(:final value) => _DayView(entries: value, target: target),
+        AsyncData(:final value) => _DayView(
+          date: _date,
+          entries: value,
+          target: target,
+        ),
         AsyncError(:final error) => Center(child: Text('讀取資料失敗：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/diary/add'),
+        onPressed: () => context.push(addFoodPath(_date)),
         child: const Icon(Icons.add),
       ),
     );
@@ -35,8 +94,13 @@ class DashboardPage extends ConsumerWidget {
 }
 
 class _DayView extends StatelessWidget {
-  const _DayView({required this.entries, required this.target});
+  const _DayView({
+    required this.date,
+    required this.entries,
+    required this.target,
+  });
 
+  final DateTime date;
   final List<FoodEntry> entries;
   final int? target;
 
@@ -53,6 +117,7 @@ class _DayView extends StatelessWidget {
         _NutrientCard(total: total),
         for (final meal in MealType.values)
           _MealCard(
+            date: date,
             meal: meal,
             entries: [
               for (final e in entries)
@@ -180,8 +245,13 @@ class _NutrientCard extends StatelessWidget {
 }
 
 class _MealCard extends StatelessWidget {
-  const _MealCard({required this.meal, required this.entries});
+  const _MealCard({
+    required this.date,
+    required this.meal,
+    required this.entries,
+  });
 
+  final DateTime date;
   final MealType meal;
   final List<FoodEntry> entries;
 
@@ -203,7 +273,7 @@ class _MealCard extends StatelessWidget {
             trailing: IconButton(
               tooltip: '新增${mealTypeLabel(meal)}',
               icon: const Icon(Icons.add_circle_outline),
-              onPressed: () => context.push('/diary/add?meal=${meal.name}'),
+              onPressed: () => context.push(addFoodPath(date, meal)),
             ),
           ),
           for (final e in entries)
@@ -212,6 +282,11 @@ class _MealCard extends StatelessWidget {
               title: Text(e.displayName),
               subtitle: Text('${e.grams.round()} 公克'),
               trailing: Text('${e.calories.round()} 大卡'),
+              onTap: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => PortionEditorSheet.edit(entry: e),
+              ),
             ),
         ],
       ),

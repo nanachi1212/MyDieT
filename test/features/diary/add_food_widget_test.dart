@@ -120,7 +120,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('quantity_field')), '-5');
     await tester.pumpAndSettle();
 
-    expect(find.text('請輸入 0 以上的數字'), findsOneWidget);
+    expect(find.text('請輸入大於 0 的數字'), findsOneWidget);
     final button = tester.widget<FilledButton>(
       find.byKey(const Key('confirm_entry_button')),
     );
